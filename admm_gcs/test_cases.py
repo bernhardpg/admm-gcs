@@ -16,7 +16,8 @@ def get_vertices(idx: int) -> npt.NDArray[np.float64]:
         np.array([[0, 0], [1, 0], [1, 1], [0, 1]]),  # Square
         np.array([[2, 2], [3, 2], [2.5, 3]]),  # Triangle
         np.array([[4, 4], [5, 4], [5.5, 5], [5, 6], [4, 6]]),  # Pentagon
-        np.array([[7, 7], [8, 7], [8.5, 7.5], [8, 8], [7, 8], [6.5, 7.5]]),  # Hexagon
+        np.array([[7, 7], [8, 7], [8.5, 7.5], [8, 8],
+                 [7, 8], [6.5, 7.5]]),  # Hexagon
         np.array(
             [
                 [10, 10],
@@ -82,6 +83,6 @@ def create_test_graph() -> GCS:
         gcs.add_edge(u, v)
 
     gcs.set_source(0)
-    gcs.set_source(len(polytopes))
+    gcs.set_target(len(polytopes) - 1)
 
     return gcs

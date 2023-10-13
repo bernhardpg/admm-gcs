@@ -1,6 +1,7 @@
-from typing import NamedTuple
+from typing import Dict, NamedTuple
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from pydrake.geometry.optimization import VPolytope
@@ -40,7 +41,12 @@ class MultiblockADMMSolver:
         for vertex_id, polytope in self.gcs.vertices.items():
             self.consensus_vars[vertex_id] = calc_polytope_centroid(polytope)
 
-        self.discrete_vars = [0, 1, 3, 5, 7]
+        assert self.gcs.source is not None
+        assert self.gcs.target is not None
+
+        self.discrete_vars = solve_discrete_spp(
+            self.local_vars, self.gcs.source, self.gcs.target
+        )
 
     def update_local(self):
         """
@@ -61,3 +67,21 @@ class MultiblockADMMSolver:
         """
         Solve the optimization problem using multi-block ADMM.
         """
+
+
+def solve_discrete_spp(
+    local_vars: Dict[Edge, EdgeVar], source: VertexId, target: VertexId
+) -> None:
+    G = nx.Graph()
+
+    def _sq_eucl_dist(xu, xv) -> float:
+        diff = xu - xv
+        return diff.T.dot(diff).item()
+
+    for edge, var in local_vars.items():
+        u, v = edge
+        w = _sq_eucl_dist(var.xu, var.xv)
+        G.add_edge(u, v, weight=w)
+
+    path = nx.shortest_path(G, source=source, target=target)
+    return path
