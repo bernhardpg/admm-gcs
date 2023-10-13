@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -5,6 +7,12 @@ from pydrake.geometry.optimization import VPolytope
 
 from admm_gcs.gcs import GCS
 from admm_gcs.test_cases import create_test_graph, create_test_polytopes
+from admm_gcs.tools import calc_polytope_centroid
+
+
+class EdgeVar(NamedTuple):
+    xu: npt.NDArray[np.float64]
+    xv: npt.NDArray[np.float64]
 
 
 class MultiblockADMMSolver:
@@ -18,6 +26,18 @@ class MultiblockADMMSolver:
         """
         Initialize local and consensus variables.
         """
+
+        for edge in self.gcs.edges:
+            u, v = edge
+            poly_u = self.gcs.vertices[u]
+            poly_v = self.gcs.vertices[v]
+
+            self.local_vars[edge] = EdgeVar(
+                xu=calc_polytope_centroid(poly_u), xv=calc_polytope_centroid(poly_v)
+            )
+
+        for vertex_id, polytope in self.gcs.vertices.items():
+            self.consensus_vars[vertex_id] = calc_polytope_centroid(polytope)
 
     def update_local(self):
         """
@@ -42,9 +62,11 @@ class MultiblockADMMSolver:
 
 def main():
     gcs = create_test_graph()
-    gcs.plot()
+    # gcs.plot()
 
     admm = MultiblockADMMSolver(gcs)
+
+    admm.initialize()
 
 
 if __name__ == "__main__":

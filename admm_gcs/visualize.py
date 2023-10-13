@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.geometry.optimization import VPolytope
 
+from admm_gcs.tools import calc_polytope_centroid
+
 
 def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
     """
@@ -38,8 +40,8 @@ def plot_polytopes_with_edges(
     # Draw arrows for edges
     for u, v in edges:
         # Compute the centroids of the two polytopes
-        centroid_u = np.mean(polytopes[u].vertices(), axis=0)
-        centroid_v = np.mean(polytopes[v].vertices(), axis=0)
+        centroid_u = calc_polytope_centroid(polytopes[u])
+        centroid_v = calc_polytope_centroid(polytopes[v])
 
         # Draw an arrow from centroid of polytope u to centroid of polytope v
         plt.arrow(
