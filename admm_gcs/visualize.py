@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,13 +29,28 @@ def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
 
 
 def plot_polytopes_with_edges(
-    polytopes: Dict[int, VPolytope], edges: List[Tuple[int, int]]
+    polytopes: Dict[int, VPolytope],
+    edges: List[Tuple[int, int]],
+    grey_points: Optional[List[np.ndarray]] = None,
+    red_points: Optional[List[np.ndarray]] = None,
 ):
     fig, ax = plt.subplots(figsize=(10, 10))
 
     # Plot each polytope
     for polytope in polytopes.values():
         plot_polytope(polytope, ax, edgecolor="k", facecolor="c", alpha=0.2)
+
+    # Plot grey points if provided
+    if grey_points is not None:
+        grey_x = [point[0] for point in grey_points]
+        grey_y = [point[1] for point in grey_points]
+        plt.scatter(grey_x, grey_y, color="grey", label="Grey Points")
+
+    # Plot red points if provided
+    if red_points is not None:
+        red_x = [point[0] for point in red_points]
+        red_y = [point[1] for point in red_points]
+        plt.scatter(red_x, red_y, color="red", label="Red Points")
 
     # Draw arrows for edges
     for u, v in edges:
@@ -61,5 +76,6 @@ def plot_polytopes_with_edges(
     plt.xlabel("X")
     plt.ylabel("Y")
     plt.title("Polytopes Visualization with Edges")
+    plt.legend()
     plt.axis("equal")
     plt.show()
