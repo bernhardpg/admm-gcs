@@ -4,6 +4,8 @@ import numpy as np
 import numpy.typing as npt
 from pydrake.geometry.optimization import VPolytope
 
+from admm_gcs.gcs import GCS
+
 
 def get_vertices(idx: int) -> npt.NDArray[np.float64]:
     """
@@ -66,3 +68,14 @@ def create_test_polytopes() -> List[VPolytope]:
     ]
     polytopes = create_centered_polytopes(desired_centroids)
     return polytopes
+
+
+def create_test_graph() -> GCS:
+    polytopes = create_test_polytopes()
+    edges = [(0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 7)]
+
+    gcs = GCS(polytopes, edges)
+    gcs.set_source(0)
+    gcs.set_source(len(polytopes))
+
+    return gcs
