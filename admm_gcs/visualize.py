@@ -1,3 +1,5 @@
+from typing import Dict, List, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.geometry.optimization import VPolytope
@@ -24,11 +26,13 @@ def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
         raise ValueError("only 2d polytopes are supported for plotting.")
 
 
-def plot_polytopes_with_edges(polytopes, edges=[]):
+def plot_polytopes_with_edges(
+    polytopes: Dict[int, VPolytope], edges: List[Tuple[int, int]]
+):
     fig, ax = plt.subplots(figsize=(10, 10))
 
     # Plot each polytope
-    for polytope in polytopes:
+    for polytope in polytopes.values():
         plot_polytope(polytope, ax, edgecolor="k", facecolor="c", alpha=0.2)
 
     # Draw arrows for edges

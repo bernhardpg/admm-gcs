@@ -74,7 +74,13 @@ def create_test_graph() -> GCS:
     polytopes = create_test_polytopes()
     edges = [(0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 7)]
 
-    gcs = GCS(polytopes, edges)
+    gcs = GCS()
+    for idx, v in enumerate(polytopes):
+        gcs.add_vertex(idx, v)
+
+    for u, v in edges:
+        gcs.add_edge(u, v)
+
     gcs.set_source(0)
     gcs.set_source(len(polytopes))
 
