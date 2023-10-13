@@ -4,8 +4,6 @@ import numpy as np
 import numpy.typing as npt
 from pydrake.geometry.optimization import VPolytope
 
-from admm_gcs.visualize import plot_polytopes_with_edges
-
 Vertex = VPolytope
 Edge = Tuple[int, int]
 
@@ -36,6 +34,3 @@ class GCS:
 
     def set_target(self, target_id: VertexId) -> None:
         self.target = target_id
-
-    def plot(self) -> None:
-        plot_polytopes_with_edges(self.vertices, self.edges)

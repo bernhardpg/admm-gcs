@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +8,6 @@ from pydrake.geometry.optimization import VPolytope
 from admm_gcs.gcs import GCS, Edge, VertexId
 from admm_gcs.test_cases import create_test_graph, create_test_polytopes
 from admm_gcs.tools import add_noise, calc_polytope_centroid
-from admm_gcs.visualize import plot_polytopes_with_edges
 
 
 class EdgeVar(NamedTuple):
@@ -41,6 +40,8 @@ class MultiblockADMMSolver:
         for vertex_id, polytope in self.gcs.vertices.items():
             self.consensus_vars[vertex_id] = calc_polytope_centroid(polytope)
 
+        self.discrete_vars = [0, 1, 3, 5, 7]
+
     def update_local(self):
         """
         Update local variables (e.g., using projections onto convex sets).
@@ -60,34 +61,3 @@ class MultiblockADMMSolver:
         """
         Solve the optimization problem using multi-block ADMM.
         """
-
-    def get_local_vars_flattened(self) -> List[npt.NDArray[np.float64]]:
-        return sum([[var.xu, var.xv] for var in self.local_vars.values()], [])
-
-    def get_consensus_vars_flattened(self) -> List[npt.NDArray[np.float64]]:
-        return [x for x in self.consensus_vars.values()]
-
-
-def plot_admm_graph(
-    admm: MultiblockADMMSolver,
-):
-    plot_polytopes_with_edges(
-        admm.gcs.vertices,
-        admm.gcs.edges,
-        admm.get_local_vars_flattened(),
-        admm.get_consensus_vars_flattened(),
-    )
-
-
-def main():
-    gcs = create_test_graph()
-    # gcs.plot()
-
-    admm = MultiblockADMMSolver(gcs)
-
-    admm.initialize()
-    plot_admm_graph(admm)
-
-
-if __name__ == "__main__":
-    main()
