@@ -4,12 +4,12 @@ version = "0.1.0"
 description = ""
 authors = ["Bernhard Paus Graesdal <bernhardpg@gmail.com>"]
 readme = "README.md"
-packages = [{include = "admm_gcs"}]
+packages = [{ include = "admm_gcs" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 drake = "^1.21.0"
-numpy = "^1.26.0"
+numpy = "^1.25.0"
 matplotlib = "^3.8.0"
 
 [tool.poetry.group.dev.dependencies]
