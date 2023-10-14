@@ -9,7 +9,7 @@ from admm_gcs.gcs import Edge, VertexId
 from admm_gcs.tools import calc_polytope_centroid
 
 
-def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
+def plot_polytope(polytope: VPolytope, ax=None, name: Optional[str] = None, **kwargs):
     """
     plots a 2d polytope using matplotlib.
 
@@ -26,6 +26,13 @@ def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
             ax = plt.gca()
         poly = plt.Polygon(vertices, **kwargs)
         ax.add_patch(poly)
+
+        # If a name is provided, display it above the polytope
+        if name is not None:
+            # Compute the centroid of the polytope
+            centroid = np.mean(vertices, axis=0)
+            ax.text(centroid[0], centroid[1], name, ha="center", va="bottom")
+
     else:
         raise ValueError("only 2d polytopes are supported for plotting.")
 
@@ -41,8 +48,10 @@ def plot_admm_solution(
     ax.clear()  # Clear previous plots on ax
 
     # Plot each polytope
-    for polytope in polytopes.values():
-        plot_polytope(polytope, ax, edgecolor="k", facecolor="c", alpha=0.2)
+    for id, polytope in polytopes.items():
+        plot_polytope(
+            polytope, ax, name=str(id), edgecolor="k", facecolor="c", alpha=0.2
+        )
 
     # Draw arrows for edges
     for u, v in edges:
@@ -64,13 +73,11 @@ def plot_admm_solution(
             alpha=0.5,
         )
 
-    # Plot grey points if provided
     if local_vars is not None:
         grey_x = [point[0] for var in local_vars.values() for point in var]
         grey_y = [point[1] for var in local_vars.values() for point in var]
         ax.scatter(grey_x, grey_y, color="red")
 
-    # Plot red points if provided
     if consensus_vars is not None:
         red_x = [point[0] for point in consensus_vars.values()]
         red_y = [point[1] for point in consensus_vars.values()]

@@ -66,6 +66,9 @@ def create_test_polytopes() -> List[VPolytope]:
         [7, 2],
         [7, -2],
         [9, 0],
+        [7, 0],
+        [3, 0.5],
+        [4.5, -0.5],
     ]
     polytopes = create_centered_polytopes(desired_centroids)
     return polytopes
@@ -73,7 +76,21 @@ def create_test_polytopes() -> List[VPolytope]:
 
 def create_test_graph() -> GCS:
     polytopes = create_test_polytopes()
-    edges = [(0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 7)]
+    edges = [
+        (0, 1),
+        (0, 2),
+        (1, 3),
+        (2, 4),
+        (3, 5),
+        (4, 6),
+        (5, 7),
+        (6, 7),
+        (5, 8),
+        (8, 7),
+        (1, 9),
+        (9, 10),
+        (10, 8),
+    ]
 
     gcs = GCS()
     for idx, v in enumerate(polytopes):
@@ -83,6 +100,6 @@ def create_test_graph() -> GCS:
         gcs.add_edge(u, v)
 
     gcs.set_source(0)
-    gcs.set_target(len(polytopes) - 1)
+    gcs.set_target(7)
 
     return gcs

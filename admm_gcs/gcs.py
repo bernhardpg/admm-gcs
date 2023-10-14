@@ -1,8 +1,9 @@
+from functools import cached_property
 from typing import List, Tuple
 
 import numpy as np
 import numpy.typing as npt
-from pydrake.geometry.optimization import VPolytope
+from pydrake.geometry.optimization import HPolyhedron, VPolytope
 
 VertexId = int
 Vertex = VPolytope
@@ -34,6 +35,10 @@ class GCS:
 
     def set_target(self, target_id: VertexId) -> None:
         self.target = target_id
+
+    @cached_property
+    def h_polyhedrons(self) -> List[HPolyhedron]:
+        return [HPolyhedron(self.vertices[id]) for id in self.vertices]
 
 
 def path_to_edges(path: Path) -> List[Edge]:

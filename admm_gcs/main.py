@@ -27,22 +27,19 @@ def main():
     gcs = create_test_graph()
     # gcs.plot()
 
-    params = AdmmParameters()
+    params = AdmmParameters(rho=100)
     admm = MultiblockADMMSolver(gcs, params)
 
     admm.initialize()
 
     # Define a plot update function
     def update(frame):
-        # Execute a step of the ADMM algorithm
-        admm._step()
-
         # Ensure axes `ax` is cleared, not the whole figure
-        ax.clear()
+        ax.clear()  # type: ignore
 
         # Update the plot using the same `ax`
         plot_admm_solution(
-            ax,
+            ax,  # type: ignore
             admm.gcs.vertices,
             admm.gcs.edges,
             admm.local_vars,
@@ -50,15 +47,42 @@ def main():
             admm.path,
         )
 
+        # if frame % 3 == 0:
+        #     admm.update_local()
+        # if frame % 3 == 1:
+        #     admm.update_consensus()
+        # if frame % 3 == 2:
+        #     admm.update_discrete()
+        #     admm.update_prices()
+
+        admm._step()
+
     # Prepare your figure and axes outside the update function
     fig, ax = plt.subplots(figsize=(10, 10))
 
+    step_ms = 1000
     # Set up the animation on the `fig` created above
-    ani = FuncAnimation(fig, update, frames=np.arange(
-        0, 10), interval=2000, blit=False)
+    ani = FuncAnimation(
+        fig, update, frames=np.arange(0, 150), interval=step_ms, blit=False
+    )
 
     # Save the animation
-    ani.save("animation.mp4", writer="ffmpeg", fps=1)
+    ani.save("animation.mp4", writer="ffmpeg", fps=30)
+
+    print(f"Local solve time (mean): {np.mean(admm.local_solve_times)} s")
+    print(f"Local solve time (max): {np.max(admm.local_solve_times)} s")
+    print(f"Local solve time (min): {np.min(admm.local_solve_times)} s")
+
+    print(f"SPP solve time (mean): {np.mean(admm.discrete_solve_times)} s")
+    print(f"SPP solve time (max): {np.max(admm.discrete_solve_times)} s")
+    print(f"SPP solve time (min): {np.min(admm.discrete_solve_times)} s")
+
+    print(
+        f"Individual QP time (mean): {np.mean(admm.individual_qp_solve_times)} s")
+    print(
+        f"Individual QP time (max): {np.max(admm.individual_qp_solve_times)} s")
+    print(
+        f"Individual QP time (min): {np.min(admm.individual_qp_solve_times)} s")
 
 
 if __name__ == "__main__":
