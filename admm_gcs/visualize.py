@@ -20,7 +20,7 @@ def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
         **kwargs: additional arguments passed to plt.polygon.
     """
     # extract vertices from the polytope and plot.
-    vertices = np.asarray(polytope.vertices())
+    vertices = np.asarray(polytope.vertices().T)
     if vertices.shape[1] == 2:  # 2d polytope
         if ax is None:
             ax = plt.gca()

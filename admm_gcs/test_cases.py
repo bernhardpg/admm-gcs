@@ -49,7 +49,7 @@ def create_centered_polytopes(desired_centroids: List[List]):
         translated_vertices = vertices + translation_vector
 
         # Create a VPolytope with the translated vertices and add it to the list
-        polytope = VPolytope(translated_vertices)
+        polytope = VPolytope(translated_vertices.T)
         positioned_polytopes.append(polytope)
 
     return positioned_polytopes

@@ -30,6 +30,9 @@ def main():
     admm = MultiblockADMMSolver(gcs, params)
 
     admm.initialize()
+    # plot_admm_graph(admm)
+    admm._step()
+    breakpoint()
     plot_admm_graph(admm)
 
 

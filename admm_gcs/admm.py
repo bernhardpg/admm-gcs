@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-from pydrake.geometry.optimization import VPolytope
+from pydrake.geometry.optimization import HPolyhedron, VPolytope
+from pydrake.solvers import MathematicalProgram, Solve
 
 from admm_gcs.gcs import GCS, Edge, VertexId, path_to_edges
 from admm_gcs.test_cases import create_test_graph, create_test_polytopes
@@ -20,6 +21,12 @@ class EdgeVar(NamedTuple):
 @dataclass
 class AdmmParameters:
     rho: float = 1.0
+
+
+# TODO(bernhardpg): Replace with Bindings
+def _sq_eucl_dist(xu, xv) -> float:
+    diff = xu - xv
+    return diff.T.dot(diff)
 
 
 class MultiblockADMMSolver:
@@ -55,10 +62,56 @@ class MultiblockADMMSolver:
             violation_e = self._calc_consensus_violation(e)
             self.price_vars[e] = violation_e
 
+    def _update_local_for_edge(self, edge: Edge) -> EdgeVar:
+        """
+        Solves a small QP to update the local variables. This can
+        be parallelized.
+        """
+
+        u, v = edge
+        x_u = self.consensus_vars[u]
+        x_v = self.consensus_vars[v]
+
+        u_eu = self.price_vars[edge].xu
+        u_ev = self.price_vars[edge].xv
+
+        y_e = self.discrete_vars[edge]
+
+        prog = MathematicalProgram()
+        x_eu = prog.NewContinuousVariables(2, "x_eu")
+        x_ev = prog.NewContinuousVariables(2, "x_ev")
+
+        l_e = _sq_eucl_dist(x_eu, x_ev)
+
+        u_e = np.concatenate((u_eu, u_ev))
+        # TODO duplicate code
+        G_e = np.concatenate((x_eu - x_u, x_ev - x_v))
+        cost = y_e * l_e + G_e.T.dot(G_e)
+
+        prog.AddQuadraticCost(cost)
+
+        X_u = HPolyhedron(self.gcs.vertices[u])
+        X_v = HPolyhedron(self.gcs.vertices[v])
+
+        prog.AddLinearConstraint(
+            X_u.A(), np.full(X_u.b().shape, -np.inf), X_u.b(), x_eu
+        )
+
+        prog.AddLinearConstraint(
+            X_v.A(), np.full(X_v.b().shape, -np.inf), X_v.b(), x_ev
+        )
+
+        result = Solve(prog)
+        assert result.is_success()
+
+        return EdgeVar(xu=result.GetSolution(x_eu), xv=result.GetSolution(x_ev))
+
     def update_local(self):
         """
         Update local variables (e.g., using projections onto convex sets).
         """
+        for edge in self.gcs.edges:
+            self.local_vars[edge] = self._update_local_for_edge(edge)
 
     def _calc_x_mean_for_vertex(self, vertex_id: VertexId) -> npt.NDArray[np.float64]:
         local_vars_for_v = []
@@ -104,7 +157,7 @@ class MultiblockADMMSolver:
             self.local_vars, self.gcs.source, self.gcs.target)
         edges_on_sp = path_to_edges(path)
 
-        for e in self.gcs.vertices:
+        for e in self.gcs.edges:
             if e in edges_on_sp:
                 self.discrete_vars[e] = 1
             else:
@@ -132,23 +185,30 @@ class MultiblockADMMSolver:
         """
         for e in self.gcs.edges:
             violation = self._calc_consensus_violation(e)
-            self.price_vars[e].xu += violation.xu
-            self.price_vars[e].xv += violation.xv
+            u = self.price_vars[e]
+            u_next = EdgeVar(xu=u.xu + violation.xu, xv=u.xv + violation.xv)
+            self.price_vars[e] = u_next
+
+    def _step(self) -> None:
+        self.update_local()
+        self.update_consensus()
+        self.update_discrete()
+        self.update_prices()
 
     def solve(self):
         """
         Solve the optimization problem using multi-block ADMM.
         """
 
+        N = 10
+        for it in range(N):
+            self._step()
+
 
 def solve_discrete_spp(
     local_vars: Dict[Edge, EdgeVar], source: VertexId, target: VertexId
 ) -> List[VertexId]:
     G = nx.Graph()
-
-    def _sq_eucl_dist(xu, xv) -> float:
-        diff = xu - xv
-        return diff.T.dot(diff).item()
 
     for edge, var in local_vars.items():
         u, v = edge
