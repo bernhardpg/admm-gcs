@@ -139,8 +139,8 @@ def generate_random_points(
 
 
 def create_random_polytopes(num_polytopes: int, min_distance: float) -> VPolytope:
-    x_min, x_max = 0, 25  # Min and max for x coordinate
-    y_min, y_max = 0, 25  # Min and max for y coordinate
+    x_min, x_max = 0, 10  # Min and max for x coordinate
+    y_min, y_max = 0, 10  # Min and max for y coordinate
     points = generate_random_points(
         num_polytopes, x_min, x_max, y_min, y_max, min_distance
     )
@@ -169,12 +169,11 @@ def generate_random_gcs(seed: int = 123):
     random.seed(seed)
 
     # Example usage:
-    N = 200  # Number of vertices
+    N = 10  # Number of vertices
     min_distance = 0.8
 
     polytopes = create_random_polytopes(N, min_distance)
-    # source = random.randint(1, N - 1)
-    source = 58
+    source = random.randint(1, N - 1)
 
     def _dist(u_id, v_id) -> float:
         source_centroid = calc_polytope_centroid(polytopes[u_id])
@@ -210,7 +209,7 @@ def generate_random_gcs(seed: int = 123):
 
     target = source
 
-    TRES = 26
+    TRES = 8.0
     while _dist(source, target) < TRES:
         target = random.choice(vertices)
 

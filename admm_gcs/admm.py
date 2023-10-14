@@ -91,6 +91,7 @@ class MultiblockADMMSolver:
         l_e = _sq_eucl_dist(x_eu, x_ev)
 
         u, v = edge
+        breakpoint()
         X_u = self.gcs.h_polyhedrons[u]
         X_v = self.gcs.h_polyhedrons[v]
 
