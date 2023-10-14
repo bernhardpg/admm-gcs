@@ -31,7 +31,7 @@ def plot_polytope(polytope: VPolytope, ax=None, name: Optional[str] = None, **kw
         if name is not None:
             # Compute the centroid of the polytope
             centroid = np.mean(vertices, axis=0)
-            ax.text(centroid[0], centroid[1], name, ha="center", va="bottom")
+            # ax.text(centroid[0], centroid[1], name, ha="center", va="bottom")
 
     else:
         raise ValueError("only 2d polytopes are supported for plotting.")
