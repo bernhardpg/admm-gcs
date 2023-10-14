@@ -12,9 +12,11 @@ drake = "^1.21.0"
 numpy = "^1.25.0"
 matplotlib = "^3.8.0"
 networkx = "^3.1"
+imageio = "^2.31.5"
 
 [tool.poetry.group.dev.dependencies]
 pdbpp = "^0.10.3"
+ipykernel = "^6.25.2"
 
 [build-system]
 requires = ["poetry-core"]

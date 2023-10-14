@@ -31,13 +31,14 @@ def plot_polytope(polytope: VPolytope, ax=None, **kwargs):
 
 
 def plot_admm_solution(
+    ax: plt.Axes,  # Add ax parameter here
     polytopes: Dict[VertexId, VPolytope],
     edges: List[Tuple[VertexId, VertexId]],
     local_vars: Optional[Dict[Edge, EdgeVar]] = None,
     consensus_vars: Optional[Dict[VertexId, np.ndarray]] = None,
     path: Optional[List[int]] = None,
 ):
-    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.clear()  # Clear previous plots on ax
 
     # Plot each polytope
     for polytope in polytopes.values():
@@ -50,7 +51,7 @@ def plot_admm_solution(
         centroid_v = calc_polytope_centroid(polytopes[v])
 
         # Draw an arrow from centroid of polytope u to centroid of polytope v
-        plt.arrow(
+        ax.arrow(
             centroid_u[0],
             centroid_u[1],
             centroid_v[0] - centroid_u[0],
@@ -67,13 +68,13 @@ def plot_admm_solution(
     if local_vars is not None:
         grey_x = [point[0] for var in local_vars.values() for point in var]
         grey_y = [point[1] for var in local_vars.values() for point in var]
-        plt.scatter(grey_x, grey_y, color="red")
+        ax.scatter(grey_x, grey_y, color="red")
 
     # Plot red points if provided
     if consensus_vars is not None:
         red_x = [point[0] for point in consensus_vars.values()]
         red_y = [point[1] for point in consensus_vars.values()]
-        plt.scatter(red_x, red_y, color="grey")
+        ax.scatter(red_x, red_y, color="grey")
 
     if path is not None:
         assert local_vars is not None
@@ -83,7 +84,7 @@ def plot_admm_solution(
             local_var = local_vars[edge]
 
             # Draw an arrow from decision variables
-            plt.arrow(
+            ax.arrow(
                 local_var.xu[0],
                 local_var.xu[1],
                 local_var.xv[0] - local_var.xu[0],
@@ -97,8 +98,7 @@ def plot_admm_solution(
             )
 
     # Set axis properties and show the plot
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("Polytopes Visualization with Edges")
-    plt.axis("equal")
-    plt.show()
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_title("Polytopes Visualization with Edges")
+    ax.axis("equal")
