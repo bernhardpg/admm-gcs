@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Tuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -18,6 +18,8 @@ class QpBase(NamedTuple):
     prog: MathematicalProgram
     x_eu: npt.NDArray
     x_ev: npt.NDArray
+    s_eu: npt.NDArray
+    s_ev: npt.NDArray
     l_e: Expression
 
 
@@ -40,10 +42,15 @@ def _sq_eucl_dist(xu, xv):
 class MultiblockADMMSolver:
     def __init__(self, gcs: GCS, params: AdmmParameters):
         self.gcs = gcs
+
         self.local_vars = {}  # one for each edge
+        self.cone_vars = {}  # one for each edge
+        self.slack_cone_vars = {}  # one for each edge
         self.price_vars = {}  # one for each edge
+        self.cone_price_vars = {}  # one for each edge
         self.consensus_vars = {}  # one for each vertex
         self.discrete_vars = {}  # one for each edge
+
         self.params = params
         self.rho = params.rho
 
@@ -58,7 +65,7 @@ class MultiblockADMMSolver:
 
     def initialize(self) -> None:
         """
-        Initialize local and consensus variables.
+        Initialize variables
         """
 
         for edge in self.gcs.edges:
@@ -71,9 +78,28 @@ class MultiblockADMMSolver:
                 xv=add_noise(calc_polytope_centroid(poly_v)),
             )
 
+        for edge in self.gcs.edges:
+            u, v = edge
+            poly_u = self.gcs.vertices[u]
+            poly_v = self.gcs.vertices[v]
+
+            X_u = self.gcs.h_polyhedrons[u]
+            X_v = self.gcs.h_polyhedrons[v]
+
+            x_eu = self.local_vars[edge].xu
+            x_ev = self.local_vars[edge].xv
+
+            s_e = EdgeVar(
+                xu=X_u.A().dot(x_eu) - X_u.b(),
+                xv=X_v.A().dot(x_ev) - X_v.b(),
+            )
+            self.cone_vars[edge] = s_e
+            self.slack_cone_vars[edge] = EdgeVar(
+                xu=np.zeros(X_u.b().shape), xv=np.zeros(X_v.b().shape)
+            )
+            self.cone_price_vars[edge] = s_e
+
         for vertex_id in self.gcs.vertices:
-            # self.consensus_vars[vertex_id] = self._calc_x_mean_for_vertex(
-            #     vertex_id)
             self.consensus_vars[vertex_id] = np.zeros((2,))
 
         self.update_discrete()
@@ -81,29 +107,33 @@ class MultiblockADMMSolver:
         for e in self.gcs.edges:
             violation_e = self._calc_consensus_violation(e)
             self.price_vars[e] = violation_e
-            # self.price_vars[e] = EdgeVar(xu=np.zeros((2,)), xv=np.zeros((2,)))
 
     def _create_program_for_edge(self, edge: Edge) -> QpBase:
         prog = MathematicalProgram()
         x_eu = prog.NewContinuousVariables(2, "x_eu")
         x_ev = prog.NewContinuousVariables(2, "x_ev")
 
-        l_e = _sq_eucl_dist(x_eu, x_ev)
-
         u, v = edge
-        breakpoint()
         X_u = self.gcs.h_polyhedrons[u]
         X_v = self.gcs.h_polyhedrons[v]
 
-        prog.AddLinearConstraint(
-            X_u.A(), np.full(X_u.b().shape, -np.inf), X_u.b(), x_eu
-        )
-        prog.AddLinearConstraint(
-            X_v.A(), np.full(X_v.b().shape, -np.inf), X_v.b(), x_ev
-        )
-        return QpBase(prog, x_eu, x_ev, l_e)
+        s_eu = prog.NewContinuousVariables(X_u.b().size, "s_eu")
+        s_ev = prog.NewContinuousVariables(X_v.b().size, "s_ev")
 
-    def _update_local_for_edge(self, edge: Edge) -> EdgeVar:
+        A_u_bar = np.hstack((X_u.A(), -np.eye(X_u.b().size)))
+        A_v_bar = np.hstack((X_v.A(), -np.eye(X_v.b().size)))
+
+        prog.AddLinearEqualityConstraint(
+            A_u_bar, X_u.b(), np.concatenate((x_eu, s_eu)))
+        prog.AddLinearEqualityConstraint(
+            A_v_bar, X_v.b(), np.concatenate((x_ev, s_ev)))
+
+        l_e = _sq_eucl_dist(x_eu, x_ev)
+
+        u, v = edge
+        return QpBase(prog, x_eu, x_ev, s_eu, s_ev, l_e)
+
+    def _update_local_for_edge(self, edge: Edge) -> Tuple[EdgeVar, EdgeVar]:
         """
         Solves a small QP to update the local variables. This can
         be parallelized.
@@ -118,12 +148,27 @@ class MultiblockADMMSolver:
 
         y_e = self.discrete_vars[edge]
 
-        prog, x_eu, x_ev, l_e = self.programs[edge]
+        prog, x_eu, x_ev, s_eu, s_ev, l_e = self.programs[edge]
 
         u_e = np.concatenate((u_eu, u_ev))
         # TODO duplicate code
-        G_e = np.concatenate((x_eu - x_u, x_ev - x_v)) + u_e
-        cost_expr = y_e * l_e + (self.rho / 2) * G_e.T.dot(G_e)
+        G_e_1 = np.concatenate((x_eu - x_u, x_ev - x_v)) + u_e
+
+        s_e = np.concatenate((s_eu, s_ev))
+        s_eu_slack = self.slack_cone_vars[edge].xu
+        s_ev_slack = self.slack_cone_vars[edge].xv
+
+        s_e_slack = np.concatenate((s_eu_slack, s_ev_slack))
+
+        w_eu = self.cone_price_vars[edge].xu
+        w_ev = self.cone_price_vars[edge].xv
+
+        w_e = np.concatenate((w_eu, w_ev))
+
+        G_e_2 = s_e - s_e_slack + w_e
+        cost_expr = y_e * l_e + (self.rho / 2) * (
+            G_e_1.T.dot(G_e_1) + G_e_2.T.dot(G_e_2)
+        )
         cost = prog.AddQuadraticCost(cost_expr)
 
         start = time.time()
@@ -136,7 +181,12 @@ class MultiblockADMMSolver:
         # Clean up prog so we don't have to rebuild it
         prog.RemoveCost(cost)  # type: ignore
 
-        return EdgeVar(xu=result.GetSolution(x_eu), xv=result.GetSolution(x_ev))
+        x_e_sol = EdgeVar(xu=result.GetSolution(x_eu),
+                          xv=result.GetSolution(x_ev))
+        s_e_sol = EdgeVar(xu=result.GetSolution(s_eu),
+                          xv=result.GetSolution(s_ev))
+
+        return x_e_sol, s_e_sol
 
     def update_local(self):
         """
@@ -144,9 +194,27 @@ class MultiblockADMMSolver:
         """
         start = time.time()
         for edge in self.gcs.edges:
-            self.local_vars[edge] = self._update_local_for_edge(edge)
+            x_e_sol, s_e_sol = self._update_local_for_edge(edge)
+            self.local_vars[edge] = x_e_sol
+            self.cone_vars[edge] = s_e_sol
 
         self.local_solve_times.append(time.time() - start)
+
+    def update_cone(self):
+        """
+        Update cone variablesusing projections onto cones.
+        """
+        for edge in self.gcs.edges:
+            w_eu = self.cone_price_vars[edge].xu
+            w_ev = self.cone_price_vars[edge].xv
+
+            s_eu = self.cone_vars[edge].xu
+            s_ev = self.cone_vars[edge].xv
+
+            s_eu_slack = np.maximum(w_eu + s_eu, 0)
+            s_ev_slack = np.maximum(w_ev + s_ev, 0)
+
+            self.slack_cone_vars[edge] = EdgeVar(xu=s_eu_slack, xv=s_ev_slack)
 
     def _calc_x_mean_for_vertex(self, vertex_id: VertexId) -> npt.NDArray[np.float64]:
         local_vars_for_v = []
@@ -223,11 +291,26 @@ class MultiblockADMMSolver:
         local variables (x_eu, x_ev) are equal to the global variables
         (x_u, x_v)
         """
+        # Local vars
         for e in self.gcs.edges:
             violation = self._calc_consensus_violation(e)
             u = self.price_vars[e]
             u_next = EdgeVar(xu=u.xu + violation.xu, xv=u.xv + violation.xv)
             self.price_vars[e] = u_next
+
+        # Cone vars
+        for edge in self.gcs.edges:
+            s_eu = self.cone_vars[edge].xu
+            s_ev = self.cone_vars[edge].xv
+
+            s_eu_slack = self.slack_cone_vars[edge].xu
+            s_ev_slack = self.slack_cone_vars[edge].xv
+
+            violation = EdgeVar(s_eu - s_eu_slack, s_ev - s_ev_slack)
+            w_e = self.cone_price_vars[edge]
+            w_e_next = EdgeVar(xu=w_e.xu + violation.xu,
+                               xv=w_e.xv + violation.xv)
+            self.cone_price_vars[edge] = w_e_next
 
     def _step(self) -> None:
         self.update_local()
