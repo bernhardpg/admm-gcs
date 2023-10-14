@@ -45,6 +45,7 @@ class MultiblockADMMSolver:
         self.consensus_vars = {}  # one for each vertex
         self.discrete_vars = {}  # one for each edge
         self.params = params
+        self.rho = params.rho
 
         self.individual_qp_solve_times = []
         self.local_solve_times = []
@@ -71,15 +72,16 @@ class MultiblockADMMSolver:
             )
 
         for vertex_id in self.gcs.vertices:
-            self.consensus_vars[vertex_id] = self._calc_x_mean_for_vertex(
-                vertex_id)
+            # self.consensus_vars[vertex_id] = self._calc_x_mean_for_vertex(
+            #     vertex_id)
+            self.consensus_vars[vertex_id] = np.zeros((2,))
 
         self.update_discrete()
 
         for e in self.gcs.edges:
-            # violation_e = self._calc_consensus_violation(e)
-            # self.price_vars[e] = violation_e
-            self.price_vars[e] = EdgeVar(xu=np.zeros((2,)), xv=np.zeros((2,)))
+            violation_e = self._calc_consensus_violation(e)
+            self.price_vars[e] = violation_e
+            # self.price_vars[e] = EdgeVar(xu=np.zeros((2,)), xv=np.zeros((2,)))
 
     def _create_program_for_edge(self, edge: Edge) -> QpBase:
         prog = MathematicalProgram()
@@ -120,7 +122,7 @@ class MultiblockADMMSolver:
         u_e = np.concatenate((u_eu, u_ev))
         # TODO duplicate code
         G_e = np.concatenate((x_eu - x_u, x_ev - x_v)) + u_e
-        cost_expr = y_e * l_e + (self.params.rho / 2) * G_e.T.dot(G_e)
+        cost_expr = y_e * l_e + (self.rho / 2) * G_e.T.dot(G_e)
         cost = prog.AddQuadraticCost(cost_expr)
 
         start = time.time()
@@ -232,6 +234,7 @@ class MultiblockADMMSolver:
         self.update_prices()
 
         self.iteration += 1
+        # TODO(bernhardpg): Update rho here
 
     def solve(self):
         """

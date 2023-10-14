@@ -37,6 +37,23 @@ def plot_polytope(polytope: VPolytope, ax=None, name: Optional[str] = None, **kw
         raise ValueError("only 2d polytopes are supported for plotting.")
 
 
+def _set_lims(polytopes, ax, buffer=0.1) -> None:
+    # Extract all vertices
+    all_vertices = np.vstack([poly.vertices().T for poly in polytopes])
+
+    # Find min and max coordinates along x and y
+    min_x, min_y = np.min(all_vertices, axis=0)
+    max_x, max_y = np.max(all_vertices, axis=0)
+
+    # Apply buffer
+    x_buffer = buffer * (max_x - min_x)
+    y_buffer = buffer * (max_y - min_y)
+
+    # Set axis limits
+    ax.set_xlim(min_x - x_buffer, max_x + x_buffer)
+    ax.set_ylim(min_y - y_buffer, max_y + y_buffer)
+
+
 def plot_admm_solution(
     ax: plt.Axes,  # Add ax parameter here
     polytopes: Dict[VertexId, VPolytope],
@@ -73,10 +90,10 @@ def plot_admm_solution(
             alpha=0.5,
         )
 
-    if local_vars is not None:
-        grey_x = [point[0] for var in local_vars.values() for point in var]
-        grey_y = [point[1] for var in local_vars.values() for point in var]
-        ax.scatter(grey_x, grey_y, color="red")
+    # if local_vars is not None:
+    #     grey_x = [point[0] for var in local_vars.values() for point in var]
+    #     grey_y = [point[1] for var in local_vars.values() for point in var]
+    #     ax.scatter(grey_x, grey_y, color="red")
 
     if consensus_vars is not None:
         red_x = [point[0] for point in consensus_vars.values()]
@@ -109,3 +126,5 @@ def plot_admm_solution(
     ax.set_ylabel("Y")
     ax.set_title("Polytopes Visualization with Edges")
     ax.axis("equal")
+
+    _set_lims(polytopes.values(), ax)

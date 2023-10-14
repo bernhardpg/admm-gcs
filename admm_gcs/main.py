@@ -27,7 +27,7 @@ def main():
     gcs = create_test_graph()
     # gcs.plot()
 
-    params = AdmmParameters(rho=100)
+    params = AdmmParameters(rho=1)
     admm = MultiblockADMMSolver(gcs, params)
 
     admm.initialize()

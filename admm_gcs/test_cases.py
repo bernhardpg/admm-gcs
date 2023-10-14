@@ -68,7 +68,9 @@ def create_test_polytopes() -> List[VPolytope]:
         [9, 0],
         [7, 0],
         [3, 0.5],
-        [4.5, -0.5],
+        [5, -0.5],
+        [6, 0.5],
+        [3, -1],
     ]
     polytopes = create_centered_polytopes(desired_centroids)
     return polytopes
@@ -90,6 +92,13 @@ def create_test_graph() -> GCS:
         (1, 9),
         (9, 10),
         (10, 8),
+        (11, 8),
+        (10, 8),
+        (3, 11),
+        (9, 11),
+        (2, 12),
+        (12, 4),
+        (0, 12),
     ]
 
     gcs = GCS()
