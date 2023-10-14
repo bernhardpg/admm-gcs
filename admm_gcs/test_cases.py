@@ -1,3 +1,4 @@
+import random
 from typing import List
 
 import numpy as np
@@ -110,5 +111,90 @@ def create_test_graph() -> GCS:
 
     gcs.set_source(0)
     gcs.set_target(7)
+
+    return gcs
+
+
+def generate_random_points(n_points, x_min, x_max, y_min, y_max) -> List[List[float]]:
+    points = []
+    for _ in range(n_points):
+        x = np.random.uniform(x_min, x_max)
+        y = np.random.uniform(y_min, y_max)
+        point = [x, y]
+        points.append(point)
+    return points
+
+
+def create_random_polytopes(num_polytopes: int) -> VPolytope:
+    x_min, x_max = 0, 10  # Min and max for x coordinate
+    y_min, y_max = 0, 10  # Min and max for y coordinate
+    points = generate_random_points(num_polytopes, x_min, x_max, y_min, y_max)
+    polytopes = create_centered_polytopes(points)
+    return polytopes
+
+
+def generate_random_edges(N, p):
+    """
+    Generate a graph with N vertices, where each possible edge is
+    included with probability p.
+
+    Parameters:
+    - N (int): Number of vertices.
+    - p (float): Probability of edge creation.
+    """
+    edges = []
+    for i in range(N):
+        for j in range(i + 1, N):
+            if random.uniform(0, 1) < p:
+                edges.append((i, j))
+    return edges
+
+
+def generate_random_gcs(seed: int = 123):
+    random.seed(seed)
+
+    # Example usage:
+    N = 25  # Number of vertices
+    p = 0.23  # Probability of edge creation
+
+    polytopes = create_random_polytopes(N)
+    edges = generate_random_edges(len(polytopes), p)
+
+    # Add edges to vertices that are not connected
+    for v in range(N):
+        if not any([v in edge for edge in edges]):
+            u_1 = random.choice(edges)[0]
+            edges.append((v, u_1))
+            u_2 = random.choice(edges)[1]
+            edges.append((u_2, v))
+
+    source = random.randint(1, N)
+    # find a connected target
+    v = source
+    length_from_source = 0
+    while True:
+        edges_from_v = [e for e in edges if e[0] == v]
+        if len(edges_from_v) == 0:
+            break
+        next_v = random.choice(edges_from_v)[1]
+        if next_v == source:
+            break
+        else:
+            length_from_source += 1
+            v = next_v
+
+    print(f"Length from source to target: {length_from_source}")
+    breakpoint()
+    target = v
+
+    gcs = GCS()
+    for idx, v in enumerate(polytopes):
+        gcs.add_vertex(idx, v)
+
+    for u, v in edges:
+        gcs.add_edge(u, v)
+
+    gcs.set_source(source)
+    gcs.set_target(target)
 
     return gcs

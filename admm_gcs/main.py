@@ -6,9 +6,10 @@ from pydrake.geometry.optimization import VPolytope
 
 from admm_gcs.admm import AdmmParameters, MultiblockADMMSolver
 from admm_gcs.gcs import GCS, Edge, VertexId, edges_to_path
-from admm_gcs.test_cases import create_test_graph, create_test_polytopes
+from admm_gcs.test_cases import (create_test_graph, create_test_polytopes,
+                                 generate_random_gcs)
 from admm_gcs.tools import add_noise, calc_polytope_centroid
-from admm_gcs.visualize import plot_admm_solution
+from admm_gcs.visualize import plot_admm_solution, plot_gcs_graph
 
 
 def plot_admm_graph(
@@ -24,8 +25,10 @@ def plot_admm_graph(
 
 
 def main():
-    gcs = create_test_graph()
-    # gcs.plot()
+    # gcs = create_test_graph()
+    gcs = generate_random_gcs(seed=1)
+    plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source,
+                   gcs.target, save_to_file=True)
 
     params = AdmmParameters(rho=1)
     admm = MultiblockADMMSolver(gcs, params)
@@ -42,6 +45,8 @@ def main():
             ax,  # type: ignore
             admm.gcs.vertices,
             admm.gcs.edges,
+            admm.gcs.source,
+            admm.gcs.target,
             admm.local_vars,
             admm.consensus_vars,
             admm.path,

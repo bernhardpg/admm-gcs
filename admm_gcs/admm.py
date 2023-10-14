@@ -178,6 +178,7 @@ class MultiblockADMMSolver:
         for vertex_id in self.gcs.vertices:
             x_mean = self._calc_x_mean_for_vertex(vertex_id)
             u_mean = self._calc_u_mean_for_vertex(vertex_id)
+
             self.consensus_vars[vertex_id] = x_mean + u_mean
 
     def update_discrete(self, show_graph=False) -> None:
@@ -252,7 +253,7 @@ def solve_discrete_spp(
     target: VertexId,
     show_graph=False,
 ) -> List[VertexId]:
-    G = nx.Graph()
+    G = nx.DiGraph()
 
     for edge, var in local_vars.items():
         u, v = edge

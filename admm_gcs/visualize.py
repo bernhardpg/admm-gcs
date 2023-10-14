@@ -54,10 +54,64 @@ def _set_lims(polytopes, ax, buffer=0.1) -> None:
     ax.set_ylim(min_y - y_buffer, max_y + y_buffer)
 
 
+def plot_gcs_graph(
+    polytopes: Dict[VertexId, VPolytope],
+    edges: List[Tuple[VertexId, VertexId]],
+    source: Optional[VertexId] = None,
+    target: Optional[VertexId] = None,
+    save_to_file: bool = True,
+):
+    fig, ax = plt.subplots()
+
+    # Plot each polytope
+    for id, polytope in polytopes.items():
+        if id == source or id == target:
+            facecolor = "g"
+        else:
+            facecolor = "c"
+        plot_polytope(
+            polytope, ax, name=str(id), edgecolor="k", facecolor=facecolor, alpha=0.2
+        )
+
+    # Draw arrows for edges
+    for u, v in edges:
+        # Compute the centroids of the two polytopes
+        centroid_u = calc_polytope_centroid(polytopes[u])
+        centroid_v = calc_polytope_centroid(polytopes[v])
+
+        # Draw an arrow from centroid of polytope u to centroid of polytope v
+        ax.arrow(
+            centroid_u[0],
+            centroid_u[1],
+            centroid_v[0] - centroid_u[0],
+            centroid_v[1] - centroid_u[1],
+            shape="full",
+            color="black",
+            linewidth=1,
+            length_includes_head=True,
+            head_width=0.1,
+            alpha=0.5,
+        )
+
+    # Set axis properties and show the plot
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_title("Polytopes Visualization with Edges")
+    ax.axis("equal")
+
+    _set_lims(polytopes.values(), ax)
+    if save_to_file:
+        plt.savefig("gcs.png", dpi=300)
+    else:
+        plt.show()
+
+
 def plot_admm_solution(
     ax: plt.Axes,  # Add ax parameter here
     polytopes: Dict[VertexId, VPolytope],
     edges: List[Tuple[VertexId, VertexId]],
+    source: Optional[VertexId] = None,
+    target: Optional[VertexId] = None,
     local_vars: Optional[Dict[Edge, EdgeVar]] = None,
     consensus_vars: Optional[Dict[VertexId, np.ndarray]] = None,
     path: Optional[List[int]] = None,
@@ -66,8 +120,12 @@ def plot_admm_solution(
 
     # Plot each polytope
     for id, polytope in polytopes.items():
+        if id == source or id == target:
+            facecolor = "g"
+        else:
+            facecolor = "c"
         plot_polytope(
-            polytope, ax, name=str(id), edgecolor="k", facecolor="c", alpha=0.2
+            polytope, ax, name=str(id), edgecolor="k", facecolor=facecolor, alpha=0.2
         )
 
     # Draw arrows for edges
