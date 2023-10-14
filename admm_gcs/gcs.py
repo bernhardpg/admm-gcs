@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -37,8 +37,8 @@ class GCS:
         self.target = target_id
 
     @cached_property
-    def h_polyhedrons(self) -> List[HPolyhedron]:
-        return [HPolyhedron(self.vertices[id]) for id in self.vertices]
+    def h_polyhedrons(self) -> Dict[VertexId, HPolyhedron]:
+        return {id: HPolyhedron(self.vertices[id]) for id in self.vertices}
 
 
 def path_to_edges(path: Path) -> List[Edge]:

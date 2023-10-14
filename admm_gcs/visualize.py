@@ -65,12 +65,17 @@ def plot_gcs_graph(
 
     # Plot each polytope
     for id, polytope in polytopes.items():
-        if id == source or id == target:
-            facecolor = "g"
+        if id == source:
+            facecolor = "green"
+            name = str(id) + " (s)"
+        elif id == target:
+            facecolor = "orange"
+            name = str(id) + " (t)"
         else:
             facecolor = "c"
+            name = str(id)
         plot_polytope(
-            polytope, ax, name=str(id), edgecolor="k", facecolor=facecolor, alpha=0.2
+            polytope, ax, name=name, edgecolor="k", facecolor=facecolor, alpha=0.2
         )
 
     # Draw arrows for edges
@@ -90,7 +95,7 @@ def plot_gcs_graph(
             linewidth=1,
             length_includes_head=True,
             head_width=0.1,
-            alpha=0.5,
+            alpha=0.1,
         )
 
     # Set axis properties and show the plot
@@ -120,12 +125,17 @@ def plot_admm_solution(
 
     # Plot each polytope
     for id, polytope in polytopes.items():
-        if id == source or id == target:
-            facecolor = "g"
+        if id == source:
+            facecolor = "green"
+            name = str(id) + " (s)"
+        elif id == target:
+            facecolor = "orange"
+            name = str(id) + " (t)"
         else:
             facecolor = "c"
+            name = str(id)
         plot_polytope(
-            polytope, ax, name=str(id), edgecolor="k", facecolor=facecolor, alpha=0.2
+            polytope, ax, name=name, edgecolor="k", facecolor=facecolor, alpha=0.2
         )
 
     # Draw arrows for edges

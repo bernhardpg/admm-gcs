@@ -29,50 +29,59 @@ def main():
     gcs = generate_random_gcs(seed=1)
     plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source,
                    gcs.target, save_to_file=True)
+    print("Saved graph to file")
 
     params = AdmmParameters(rho=1)
     admm = MultiblockADMMSolver(gcs, params)
 
     admm.initialize()
+    num_steps = 150
 
-    # Define a plot update function
-    def update(frame):
-        # Ensure axes `ax` is cleared, not the whole figure
-        ax.clear()  # type: ignore
+    animate = True
 
-        # Update the plot using the same `ax`
-        plot_admm_solution(
-            ax,  # type: ignore
-            admm.gcs.vertices,
-            admm.gcs.edges,
-            admm.gcs.source,
-            admm.gcs.target,
-            admm.local_vars,
-            admm.consensus_vars,
-            admm.path,
+    if animate:
+        # Define a plot update function
+        def update(frame):
+            print(f"Frame: {frame}")
+            # Ensure axes `ax` is cleared, not the whole figure
+            ax.clear()  # type: ignore
+
+            # Update the plot using the same `ax`
+            plot_admm_solution(
+                ax,  # type: ignore
+                admm.gcs.vertices,
+                admm.gcs.edges,
+                admm.gcs.source,
+                admm.gcs.target,
+                admm.local_vars,
+                admm.consensus_vars,
+                admm.path,
+            )
+
+            # if frame % 3 == 0:
+            #     admm.update_local()
+            # if frame % 3 == 1:
+            #     admm.update_consensus()
+            # if frame % 3 == 2:
+            #     admm.update_discrete()
+            #     admm.update_prices()
+
+            admm._step()
+
+        # Prepare your figure and axes outside the update function
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        step_ms = 1000 / 30
+        # Set up the animation on the `fig` created above
+        ani = FuncAnimation(
+            fig, update, frames=np.arange(0, num_steps), interval=step_ms, blit=False
         )
 
-        # if frame % 3 == 0:
-        #     admm.update_local()
-        # if frame % 3 == 1:
-        #     admm.update_consensus()
-        # if frame % 3 == 2:
-        #     admm.update_discrete()
-        #     admm.update_prices()
-
-        admm._step()
-
-    # Prepare your figure and axes outside the update function
-    fig, ax = plt.subplots(figsize=(10, 10))
-
-    step_ms = 1000
-    # Set up the animation on the `fig` created above
-    ani = FuncAnimation(
-        fig, update, frames=np.arange(0, 150), interval=step_ms, blit=False
-    )
-
-    # Save the animation
-    ani.save("animation.mp4", writer="ffmpeg", fps=30)
+        # Save the animation
+        ani.save("animation.mp4", writer="ffmpeg", fps=30)
+    else:
+        for _ in range(150):
+            admm._step()
 
     print(f"Local solve time (mean): {np.mean(admm.local_solve_times)} s")
     print(f"Local solve time (max): {np.max(admm.local_solve_times)} s")
