@@ -1,13 +1,13 @@
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import numpy.typing as npt
 from pydrake.geometry.optimization import VPolytope
 
-Vertex = VPolytope
-Edge = Tuple[int, int]
-
 VertexId = int
+Vertex = VPolytope
+Edge = Tuple[VertexId, VertexId]
+Path = List[VertexId]
 
 
 class GCS:
@@ -34,3 +34,13 @@ class GCS:
 
     def set_target(self, target_id: VertexId) -> None:
         self.target = target_id
+
+
+def path_to_edges(path: Path) -> List[Edge]:
+    edges = [(u, v) for u, v in zip(path[:-1], path[1:])]
+    return edges
+
+
+def edges_to_path(edges: List[Edge]) -> Path:
+    vertices = [u for u, _ in edges] + [edges[-1][1]]
+    return vertices

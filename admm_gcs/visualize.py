@@ -100,6 +100,5 @@ def plot_admm_solution(
     plt.xlabel("X")
     plt.ylabel("Y")
     plt.title("Polytopes Visualization with Edges")
-    plt.legend()
     plt.axis("equal")
     plt.show()
