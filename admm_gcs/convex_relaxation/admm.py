@@ -4,7 +4,7 @@ from typing import Any, Generic, TypeVar
 import numpy as np
 import numpy.typing as npt
 from pydrake.math import eq
-from pydrake.solvers import MathematicalProgram, MosekSolver
+from pydrake.solvers import MathematicalProgram, MathematicalProgramResult, MosekSolver
 
 from admm_gcs.non_convex_admm.gcs import GCS, VertexId
 from admm_gcs.test_cases import create_test_graph
@@ -37,6 +37,12 @@ class EdgeVars(Generic[T]):
 
     def v_stacked(self) -> npt.NDArray[T]:
         return np.concatenate((self.z_v, [self.y]))
+
+    def eval_result(self, result: MathematicalProgramResult) -> "EdgeVars":
+        z_u = result.GetSolution(self.z_u)
+        z_v = result.GetSolution(self.z_v)
+        y = result.GetSolution(self.y)
+        return EdgeVars(z_u, z_v, y)
 
 
 @dataclass
@@ -176,6 +182,10 @@ class AdmmSolver:
         result = solver.Solve(prog)  # type: ignore
 
         assert result.is_success()
+
+        self.local_vars[vertex] = {
+            edge: vars.eval_result(result) for edge, vars in local_vars.items()
+        }
 
     def update_local(self) -> None:
         for v in self.graph.vertices:
