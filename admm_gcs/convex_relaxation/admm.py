@@ -3,6 +3,7 @@ from typing import Any, Generic, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+from pydrake.math import eq
 from pydrake.solvers import MathematicalProgram
 
 from admm_gcs.non_convex_admm.gcs import GCS, VertexId
@@ -75,7 +76,7 @@ class AdmmSolver:
             e: EdgeVars(
                 prog.NewContinuousVariables(self.dim, f"z_{e}_u"),
                 prog.NewContinuousVariables(self.dim, f"z_{e}_v"),
-                prog.NewContinuousVariables(1, f"y_{e}"),
+                prog.NewContinuousVariables(1, f"y_{e}").item(),
             )
             for e in edges
         }
@@ -98,11 +99,36 @@ class AdmmSolver:
 
             z_e_u_err = squared_eucl_norm(z_ve_u - z_e_u + lam_ve_u)
             z_e_v_err = squared_eucl_norm(z_ve_v - z_e_v + lam_ve_v)
-            y_e_err = squared_eucl_norm(y_ve - y_e + mu_ve)
+            y_e_err = (y_ve - y_e + mu_ve) ** 2
 
             prog.AddQuadraticCost(z_e_u_err + z_e_v_err + y_e_err, is_convex=True)
 
-        breakpoint()
+        # Flow constraints
+        incoming_edges = self.graph.incoming_edges_per_vertex[vertex]
+        outgoing_edges = self.graph.outgoing_edges_per_vertex[vertex]
+
+        outgoing_flows = sum([local_vars[e].y for e in outgoing_edges], start=0)
+        incoming_flows = sum([local_vars[e].y for e in incoming_edges], start=0)
+
+        if vertex == self.graph.source:
+            prog.AddLinearEqualityConstraint(outgoing_flows == 1)  # type: ignore
+        elif vertex == self.graph.target:
+            prog.AddLinearEqualityConstraint(incoming_flows == 1)  # type: ignore
+        else:
+            # Degree constraint
+            prog.AddLinearConstraint(incoming_flows <= 1)  # type: ignore
+
+            # Preservation of flow
+            prog.AddLinearConstraint(outgoing_flows == incoming_flows)  # type: ignore
+
+            # Spatial flow constraints
+            incoming_spatial_flows = sum(
+                [local_vars[e].z_v for e in incoming_edges], start=np.zeros((self.dim,))
+            )
+            outgoing_spatial_flows = sum(
+                [local_vars[e].z_u for e in outgoing_edges], start=np.zeros((self.dim,))
+            )
+            prog.AddLinearConstraint(eq(outgoing_spatial_flows, incoming_spatial_flows))
 
     def update_local(self) -> None:
         for v in self.graph.vertices:
@@ -141,8 +167,6 @@ def main() -> None:
 
     solver.initialize()
     solver.update_local()
-
-    self.local_vars = {v: EdgeVars(ambient_dim=2) for v in self.graph.vertices}
 
 
 if __name__ == "__main__":
