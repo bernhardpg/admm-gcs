@@ -87,6 +87,11 @@ class AdmmSolver:
             for e in edges
         }
 
+        # Flow variables are nonnegative
+        for e in edges:
+            y_e = local_vars[e].y
+            prog.AddLinearConstraint(y_e >= 0)
+
         price_vars = self.price_vars[vertex]
 
         # Add consensus cost
@@ -140,7 +145,7 @@ class AdmmSolver:
         for e in edges:
             u, v = e
             X_u = self.graph.h_polyhedrons[u]
-            X_v = self.graph.h_polyhedrons[u]
+            X_v = self.graph.h_polyhedrons[v]
 
             A_u = np.hstack((X_u.A(), -X_u.b().reshape((-1, 1))))
             x_u = local_vars[e].u_stacked()
@@ -153,6 +158,19 @@ class AdmmSolver:
             prog.AddLinearConstraint(
                 A_v, np.full(A_v.shape[0], -np.inf), np.zeros(A_v.shape[0]), x_v
             )
+
+        # Perspective cost
+        # (Euclidean Distance)
+        # (Note that the perspective of the euclidean distance is just the eucl distance itself as long
+        # as the scaling variable is nonnegative)
+        for e in edges:
+            u, v = e
+            s = prog.NewContinuousVariables(1, f"s_{e}").item()
+            prog.AddLinearCost(s)
+
+            z_u = local_vars[e].z_u
+            z_v = local_vars[e].z_v
+            prog.AddLorentzConeConstraint(np.concatenate([[s], z_u, z_v]))
 
         solver = MosekSolver()
         result = solver.Solve(prog)  # type: ignore
