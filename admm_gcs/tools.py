@@ -1,6 +1,19 @@
+from typing import Any, TypeVar
+
 import numpy as np
 import numpy.typing as npt
 from pydrake.geometry.optimization import VPolytope
+
+T = TypeVar("T", bound=Any)
+
+
+def squared_eucl_norm(v: npt.NDArray[T]) -> T:
+    return v.dot(v)
+
+
+def squared_eucl_distance(v1: npt.NDArray[T], v2: npt.NDArray[T]) -> T:
+    dist = v1 - v2
+    return dist.T.dot(dist)
 
 
 def calc_polytope_centroid(polytope: VPolytope) -> npt.NDArray[np.float64]:

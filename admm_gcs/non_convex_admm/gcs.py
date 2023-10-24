@@ -40,6 +40,21 @@ class GCS:
     def h_polyhedrons(self) -> Dict[VertexId, HPolyhedron]:
         return {id: HPolyhedron(self.vertices[id]) for id in self.vertices}
 
+    def get_incoming_edges(self, target: VertexId) -> List[Edge]:
+        incoming_edges = [(u, v) for (u, v) in self.edges if (v == target)]
+        return incoming_edges
+
+    def get_outgoing_edges(self, target: VertexId) -> List[Edge]:
+        outgoing_edges = [(u, v) for (u, v) in self.edges if (u == target)]
+        return outgoing_edges
+
+    @cached_property
+    def edges_per_vertex(self) -> Dict[VertexId, List[Edge]]:
+        return {
+            target: self.get_incoming_edges(target) + self.get_outgoing_edges(target)
+            for target in self.vertices
+        }
+
 
 def path_to_edges(path: Path) -> List[Edge]:
     edges = [(u, v) for u, v in zip(path[:-1], path[1:])]
