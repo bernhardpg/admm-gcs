@@ -223,7 +223,7 @@ class AdmmSolver:
 
         y_ve = self.local_vars[v][e].y
         mu_ve = self.price_vars[v][e].y
-        const_1 = y_ve + mu_ve
+        const_2 = y_ve + mu_ve
 
         y_e = 0.5 * (const_1 + const_2)
 
@@ -234,12 +234,34 @@ class AdmmSolver:
             self._update_consensus_for_edge(e)
 
     def update_prices(self) -> None:
-        ...
+        for v in self.graph.vertices:
+            for e in self.graph.edges_per_vertex[v]:
+                lam_ve_u = self.price_vars[v][e].z_u
+                lam_ve_v = self.price_vars[v][e].z_v
+                mu_ve = self.price_vars[v][e].y
+
+                z_ve_u = self.local_vars[v][e].z_u
+                z_ve_v = self.local_vars[v][e].z_v
+                y_ve = self.local_vars[v][e].y
+
+                z_e_u = self.consensus_vars[e].z_u
+                z_e_v = self.consensus_vars[e].z_v
+                y_e = self.consensus_vars[e].y
+
+                lam_ve_u_next = lam_ve_u + z_ve_u - z_e_u
+                lam_ve_v_next = lam_ve_v + z_ve_v - z_e_v
+                mu_ve_next = mu_ve + y_ve - y_e
+
+                self.price_vars[v][e] = EdgeVars(
+                    lam_ve_u_next, lam_ve_v_next, mu_ve_next
+                )
 
     def _step(self) -> None:
         self.update_local()
         self.update_consensus()
         self.update_prices()
+
+        print(self.iteration)
 
         self.iteration += 1
         # TODO(bernhardpg): Update rho here
@@ -262,8 +284,7 @@ def main() -> None:
     solver = AdmmSolver(gcs, params)
 
     solver.initialize()
-    solver.update_local()
-    solver.update_consensus()
+    solver.solve()
 
 
 if __name__ == "__main__":
