@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.geometry.optimization import VPolytope
 
-from admm_gcs.admm import EdgeVar
-from admm_gcs.gcs import Edge, VertexId
+from admm_gcs.non_convex_admm.admm import EdgeVar
+from admm_gcs.non_convex_admm.gcs import Edge, VertexId
 from admm_gcs.tools import calc_polytope_centroid
 
 

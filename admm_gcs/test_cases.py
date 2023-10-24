@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 from pydrake.geometry.optimization import VPolytope
 
-from admm_gcs.gcs import GCS
+from admm_gcs.non_convex_admm.gcs import GCS
 from admm_gcs.tools import calc_polytope_centroid
 
 
@@ -19,8 +19,7 @@ def get_vertices(idx: int) -> npt.NDArray[np.float64]:
         np.array([[0, 0], [1, 0], [1, 1], [0, 1]]),  # Square
         np.array([[2, 2], [3, 2], [2.5, 3]]),  # Triangle
         np.array([[4, 4], [5, 4], [5.5, 5], [5, 6], [4, 6]]),  # Pentagon
-        np.array([[7, 7], [8, 7], [8.5, 7.5], [8, 8],
-                 [7, 8], [6.5, 7.5]]),  # Hexagon
+        np.array([[7, 7], [8, 7], [8.5, 7.5], [8, 8], [7, 8], [6.5, 7.5]]),  # Hexagon
         np.array(
             [
                 [10, 10],
@@ -119,8 +118,7 @@ def create_test_graph() -> GCS:
 
 def is_point_too_close(point, points, min_distance):
     for existing_point in points:
-        distance = np.sqrt(
-            np.sum((np.array(point) - np.array(existing_point)) ** 2))
+        distance = np.sqrt(np.sum((np.array(point) - np.array(existing_point)) ** 2))
         if distance < min_distance:
             return True  # Point is too close to another point
     return False  # Point is not too close to any other point
@@ -131,8 +129,7 @@ def generate_random_points(
 ) -> List[List[float]]:
     points = []
     while len(points) < num_points:
-        new_point = (random.uniform(x_min, x_max),
-                     random.uniform(x_min, y_max))
+        new_point = (random.uniform(x_min, x_max), random.uniform(x_min, y_max))
         if not points or not is_point_too_close(new_point, points, min_distance):
             points.append(new_point)
     return points
