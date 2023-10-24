@@ -32,6 +32,12 @@ class EdgeVars(Generic[T]):
 
         return cls(z_u, z_v, y)
 
+    def u_stacked(self) -> npt.NDArray[T]:
+        return np.concatenate((self.z_u, [self.y]))
+
+    def v_stacked(self) -> npt.NDArray[T]:
+        return np.concatenate((self.z_v, [self.y]))
+
 
 @dataclass
 class AdmmParameters:
@@ -129,6 +135,24 @@ class AdmmSolver:
                 [local_vars[e].z_u for e in outgoing_edges], start=np.zeros((self.dim,))
             )
             prog.AddLinearConstraint(eq(outgoing_spatial_flows, incoming_spatial_flows))
+
+        # Perspective set containment
+        for e in edges:
+            u, v = e
+            X_u = self.graph.h_polyhedrons[u]
+            X_v = self.graph.h_polyhedrons[u]
+
+            A_u = np.hstack((X_u.A(), -X_u.b().reshape((-1, 1))))
+            x_u = local_vars[e].u_stacked()
+            prog.AddLinearConstraint(
+                A_u, np.full(A_u.shape[0], -np.inf), np.zeros(A_u.shape[0]), x_u
+            )
+
+            A_v = np.hstack((X_v.A(), -X_v.b().reshape((-1, 1))))
+            x_v = local_vars[e].v_stacked()
+            prog.AddLinearConstraint(
+                A_v, np.full(A_v.shape[0], -np.inf), np.zeros(A_v.shape[0]), x_v
+            )
 
         solver = MosekSolver()
         result = solver.Solve(prog)  # type: ignore
