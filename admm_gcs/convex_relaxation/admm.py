@@ -6,7 +6,7 @@ import numpy.typing as npt
 from pydrake.math import eq
 from pydrake.solvers import MathematicalProgram, MathematicalProgramResult, MosekSolver
 
-from admm_gcs.non_convex_admm.gcs import GCS, VertexId
+from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId
 from admm_gcs.test_cases import create_test_graph
 from admm_gcs.tools import squared_eucl_distance, squared_eucl_norm
 from admm_gcs.visualize import plot_gcs_graph
@@ -191,8 +191,47 @@ class AdmmSolver:
         for v in self.graph.vertices:
             self._update_local_for_vertex(v)
 
+    def _update_consensus_for_edge(self, e: Edge) -> None:
+        u, v = e
+
+        # Update z_e_u
+        z_ue_u = self.local_vars[u][e].z_u
+        lam_ue_u = self.price_vars[u][e].z_u
+        const_1 = z_ue_u + lam_ue_u
+
+        z_ve_u = self.local_vars[v][e].z_u
+        lam_ve_u = self.price_vars[v][e].z_u
+        const_2 = z_ve_u + lam_ve_u
+
+        z_e_u = 0.5 * (const_1 + const_2)
+
+        # Update z_e_v
+        z_ue_v = self.local_vars[u][e].z_v
+        lam_ue_v = self.price_vars[u][e].z_v
+        const_1 = z_ue_v + lam_ue_v
+
+        z_ve_v = self.local_vars[v][e].z_v
+        lam_ve_v = self.price_vars[v][e].z_v
+        const_2 = z_ve_v + lam_ve_v
+
+        z_e_v = 0.5 * (const_1 + const_2)
+
+        # Update y_e
+        y_ue = self.local_vars[u][e].y
+        mu_ue = self.price_vars[u][e].y
+        const_1 = y_ue + mu_ue
+
+        y_ve = self.local_vars[v][e].y
+        mu_ve = self.price_vars[v][e].y
+        const_1 = y_ve + mu_ve
+
+        y_e = 0.5 * (const_1 + const_2)
+
+        self.consensus_vars[e] = EdgeVars(z_e_u, z_e_v, y_e)
+
     def update_consensus(self) -> None:
-        ...
+        for e in self.graph.edges:
+            self._update_consensus_for_edge(e)
 
     def update_prices(self) -> None:
         ...
@@ -224,6 +263,7 @@ def main() -> None:
 
     solver.initialize()
     solver.update_local()
+    solver.update_consensus()
 
 
 if __name__ == "__main__":
