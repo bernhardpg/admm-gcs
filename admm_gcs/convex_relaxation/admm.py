@@ -4,7 +4,7 @@ from typing import Any, Generic, TypeVar
 import numpy as np
 import numpy.typing as npt
 from pydrake.math import eq
-from pydrake.solvers import MathematicalProgram
+from pydrake.solvers import MathematicalProgram, MosekSolver
 
 from admm_gcs.non_convex_admm.gcs import GCS, VertexId
 from admm_gcs.test_cases import create_test_graph
@@ -129,6 +129,11 @@ class AdmmSolver:
                 [local_vars[e].z_u for e in outgoing_edges], start=np.zeros((self.dim,))
             )
             prog.AddLinearConstraint(eq(outgoing_spatial_flows, incoming_spatial_flows))
+
+        solver = MosekSolver()
+        result = solver.Solve(prog)  # type: ignore
+
+        assert result.is_success()
 
     def update_local(self) -> None:
         for v in self.graph.vertices:
