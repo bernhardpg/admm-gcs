@@ -8,14 +8,14 @@ from admm_gcs.visualize import plot_gcs_graph, plot_gcs_relaxation
 
 
 def main() -> None:
-    # gcs = create_test_graph()
+    gcs = create_test_graph()
 
-    gcs = generate_random_gcs(RandomGcsParams(num_vertices=15, seed=3, target_dist=8.0))
+    # gcs = generate_random_gcs(RandomGcsParams(num_vertices=15, seed=3, target_dist=8.0))
     plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source, gcs.target, save_to_file=True)
     print("Saved gcs graph to file")
 
     params = AdmmParameters(
-        rho=10.0, sigma=10.0, max_iterations=200, store_iterations=True
+        rho=1.0, sigma=1.0, max_iterations=200, store_iterations=True
     )
     solver = AdmmSolver(gcs, params)
 

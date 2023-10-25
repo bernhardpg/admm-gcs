@@ -176,7 +176,7 @@ class AdmmSolver:
             prog.AddLinearEqualityConstraint(incoming_flows == 1)  # type: ignore
         else:
             # Degree constraint
-            prog.AddLinearConstraint(incoming_flows <= 1)  # type: ignore
+            prog.AddLinearConstraint(outgoing_flows <= 1)  # type: ignore
 
             # Preservation of flow
             prog.AddLinearConstraint(outgoing_flows == incoming_flows)  # type: ignore
