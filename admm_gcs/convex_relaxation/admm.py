@@ -8,7 +8,7 @@ from pydrake.math import eq
 from pydrake.solvers import MathematicalProgram, MathematicalProgramResult, MosekSolver
 
 from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId
-from admm_gcs.tools import squared_eucl_norm
+from admm_gcs.tools import add_noise, calc_polytope_centroid, squared_eucl_norm
 
 T = TypeVar("T", bound=Any)
 
@@ -68,6 +68,7 @@ class AdmmParameters:
     sigma: float = 1.0
     max_iterations: int = 50
     store_iterations: bool = False
+    init_consensus_w_noise: bool = False
 
 
 class AdmmSolver:
@@ -90,9 +91,19 @@ class AdmmSolver:
             for v in self.graph.vertices
         }
 
-        self.consensus_vars = {
-            e: EdgeVars.make_zero(ambient_dim=2) for e in self.graph.edges
-        }
+        if self.params.init_consensus_w_noise:
+            self.consensus_vars = {
+                (u, v): EdgeVars(
+                    z_u=add_noise(calc_polytope_centroid(self.graph.vertices[u])),
+                    z_v=add_noise(calc_polytope_centroid(self.graph.vertices[v])),
+                    y=0.0,
+                )
+                for (u, v) in self.graph.edges
+            }
+        else:
+            self.consensus_vars = {
+                e: EdgeVars.make_zero(ambient_dim=self.dim) for e in self.graph.edges
+            }
 
         self.price_vars = {
             v: {
