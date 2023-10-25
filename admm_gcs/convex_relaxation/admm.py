@@ -4,7 +4,7 @@ from typing import Any, Generic, Optional, TypeVar
 
 import numpy as np
 import numpy.typing as npt
-from pydrake.math import eq
+from pydrake.math import eq, ge
 from pydrake.solvers import MathematicalProgram, MathematicalProgramResult, MosekSolver
 
 from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId
@@ -175,20 +175,46 @@ class AdmmSolver:
         elif vertex == self.graph.target:
             prog.AddLinearEqualityConstraint(incoming_flows == 1)  # type: ignore
         else:
-            # Degree constraint
-            prog.AddLinearConstraint(outgoing_flows <= 1)  # type: ignore
+            if len(outgoing_edges) > 0:
+                # Degree constraint
+                prog.AddLinearConstraint(outgoing_flows <= 1)  # type: ignore
 
-            # Preservation of flow
-            prog.AddLinearConstraint(outgoing_flows == incoming_flows)  # type: ignore
+                # Preservation of flow
+                prog.AddLinearConstraint(
+                    outgoing_flows == incoming_flows
+                )  # type: ignore
 
-            # Spatial flow constraints
-            incoming_spatial_flows = sum(
-                [local_vars[e].z_v for e in incoming_edges], start=np.zeros((self.dim,))
-            )
-            outgoing_spatial_flows = sum(
-                [local_vars[e].z_u for e in outgoing_edges], start=np.zeros((self.dim,))
-            )
-            prog.AddLinearConstraint(eq(outgoing_spatial_flows, incoming_spatial_flows))
+                # Spatial flow constraints
+                incoming_spatial_flows = sum(
+                    [local_vars[e].z_v for e in incoming_edges],
+                    start=np.zeros((self.dim,)),
+                )
+                outgoing_spatial_flows = sum(
+                    [local_vars[e].z_u for e in outgoing_edges],
+                    start=np.zeros((self.dim,)),
+                )
+                prog.AddLinearConstraint(
+                    eq(outgoing_spatial_flows, incoming_spatial_flows)
+                )
+
+                # Two-cycle elimination constraints
+                for e_out in outgoing_edges:
+                    for e_in in incoming_edges:
+                        if e_in[0] == e_out[1]:
+                            vars_in = local_vars[e_in]
+                            vars_out = local_vars[e_out]
+
+                            flow_expr = outgoing_flows - vars_in.y - vars_out.y
+                            prog.AddLinearConstraint(flow_expr >= 0)
+
+                            spatial_expr = (
+                                outgoing_spatial_flows - vars_in.z_v - vars_out.z_u
+                            )
+
+                            X_v = self.graph.h_polyhedrons[vertex]
+                            prog.AddLinearConstraint(
+                                ge(X_v.A().dot(spatial_expr), flow_expr * X_v.b())
+                            )
 
         # Perspective set containment
         for e in edges:
