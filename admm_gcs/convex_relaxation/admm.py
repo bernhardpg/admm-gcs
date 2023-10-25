@@ -197,24 +197,24 @@ class AdmmSolver:
                     eq(outgoing_spatial_flows, incoming_spatial_flows)
                 )
 
-                # Two-cycle elimination constraints
-                for e_out in outgoing_edges:
-                    for e_in in incoming_edges:
-                        if e_in[0] == e_out[1]:
-                            vars_in = local_vars[e_in]
-                            vars_out = local_vars[e_out]
-
-                            flow_expr = outgoing_flows - vars_in.y - vars_out.y
-                            prog.AddLinearConstraint(flow_expr >= 0)
-
-                            spatial_expr = (
-                                outgoing_spatial_flows - vars_in.z_v - vars_out.z_u
-                            )
-
-                            X_v = self.graph.h_polyhedrons[vertex]
-                            prog.AddLinearConstraint(
-                                ge(X_v.A().dot(spatial_expr), flow_expr * X_v.b())
-                            )
+                # # Two-cycle elimination constraints
+                # for e_out in outgoing_edges:
+                #     for e_in in incoming_edges:
+                #         if e_in[0] == e_out[1]:
+                #             vars_in = local_vars[e_in]
+                #             vars_out = local_vars[e_out]
+                #
+                #             flow_expr = outgoing_flows - vars_in.y - vars_out.y
+                #             prog.AddLinearConstraint(flow_expr >= 0)
+                #
+                #             spatial_expr = (
+                #                 outgoing_spatial_flows - vars_in.z_v - vars_out.z_u
+                #             )
+                #
+                #             X_v = self.graph.h_polyhedrons[vertex]
+                #             prog.AddLinearConstraint(
+                #                 ge(X_v.A().dot(spatial_expr), flow_expr * X_v.b())
+                #             )
 
         # Perspective set containment
         for e in edges:

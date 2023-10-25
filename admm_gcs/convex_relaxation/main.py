@@ -1,25 +1,69 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pydrake.geometry.optimization as opt
 from matplotlib.animation import FuncAnimation
+from pydrake.solvers import Binding, L2NormCost
+from pydrake.symbolic import DecomposeLinearExpressions
 
-from admm_gcs.convex_relaxation.admm import AdmmParameters, AdmmSolver
+from admm_gcs.convex_relaxation.admm import AdmmParameters, AdmmSolver, EdgeVars
+from admm_gcs.non_convex_admm.gcs import GCS
 from admm_gcs.test_cases import RandomGcsParams, create_test_graph, generate_random_gcs
 from admm_gcs.visualize import plot_gcs_graph, plot_gcs_relaxation
 
 
-def main() -> None:
-    # gcs = create_test_graph()
+def solve_with_drake(custom_gcs: GCS) -> None:
+    gcs = opt.GraphOfConvexSets()
 
-    gcs = generate_random_gcs(RandomGcsParams(num_vertices=15, seed=3, target_dist=8.0))
+    vertices = {id: gcs.AddVertex(v, str(id)) for id, v in custom_gcs.vertices.items()}
+    edges = {
+        (u, v): gcs.AddEdge(vertices[u], vertices[v], str((u, v)))
+        for u, v in custom_gcs.edges
+    }
+
+    for (u, v), e in edges.items():
+        dist = e.xu() - e.xv()
+        x = np.concatenate((e.xu(), e.xv()))
+        A = DecomposeLinearExpressions(dist, x)
+
+        cost = L2NormCost(A, np.zeros(e.xu().shape))
+        e.AddCost(Binding[L2NormCost](cost, x))
+
+    options = opt.GraphOfConvexSetsOptions()
+    options.max_rounded_paths = 0
+    options.convex_relaxation = False
+
+    result = gcs.SolveShortestPath(
+        vertices[custom_gcs.source], vertices[custom_gcs.target], options
+    )
+    assert result.is_success()
+
+    edge_vars = {
+        (u, v): EdgeVars(
+            result.GetSolution(e.xu()),
+            result.GetSolution(e.xv()),
+            result.GetSolution(e.phi()),
+        )
+        for (u, v), e in edges.items()
+    }
+
+    return edge_vars
+
+
+def main() -> None:
+    gcs = create_test_graph()
+
+    # gcs = generate_random_gcs(RandomGcsParams(num_vertices=15, seed=3, target_dist=8.0))
     plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source, gcs.target, save_to_file=True)
     print("Saved gcs graph to file")
+
+    true_vars = solve_with_drake(gcs)
 
     params = AdmmParameters(
         rho=10.0,
         sigma=10.0,
-        max_iterations=60,
+        max_iterations=200,
         store_iterations=True,
-        init_consensus_w_noise=True,
+        init_consensus_w_noise=False,
     )
     solver = AdmmSolver(gcs, params)
 
@@ -40,6 +84,7 @@ def main() -> None:
                 ax,  # type: ignore
                 gcs,
                 solver.consensus_vars_history[frame],
+                true_vars,
             )
 
         # Prepare your figure and axes outside the update function

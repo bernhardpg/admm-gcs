@@ -4,7 +4,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.geometry.optimization import VPolytope
 
-from admm_gcs.colors import COLORS, CORNSILK4, CRIMSON
+from admm_gcs.colors import (
+    AZURE1,
+    AZURE3,
+    CADETBLUE,
+    CADETBLUE1,
+    CHARTREUSE4,
+    COBALTGREEN,
+    COLORS,
+    CORNSILK4,
+    CRIMSON,
+    DARKOLIVEGREEN,
+    DARKORANGE,
+    DARKORANGE4,
+    LIGHTCYAN1,
+    LIGHTCYAN3,
+    LIGHTSKYBLUE1,
+    LIGHTSKYBLUE3,
+    LIGHTSKYBLUE4,
+)
 from admm_gcs.convex_relaxation.admm import EdgeVars
 from admm_gcs.non_convex_admm.admm import EdgeVar
 from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId
@@ -33,7 +51,7 @@ def plot_polytope(polytope: VPolytope, ax=None, name: Optional[str] = None, **kw
         if name is not None:
             # Compute the centroid of the polytope
             centroid = np.mean(vertices, axis=0)
-            # ax.text(centroid[0], centroid[1], name, ha="center", va="bottom")
+            ax.text(centroid[0], centroid[1], name, ha="center", va="bottom")
 
     else:
         raise ValueError("only 2d polytopes are supported for plotting.")
@@ -76,9 +94,7 @@ def plot_gcs_graph(
         else:
             facecolor = "c"
             name = str(id)
-        plot_polytope(
-            polytope, ax, name=name, edgecolor="k", facecolor=facecolor, alpha=0.2
-        )
+        plot_polytope(polytope, ax, name=name, edgecolor="k", facecolor=facecolor)
 
     # Draw arrows for edges
     for u, v in edges:
@@ -113,57 +129,49 @@ def plot_gcs_graph(
         plt.show()
 
 
-def _get_color(val):
-    """
-    Interpolate color between grey and red based on val.
-    val should be between 0 and 1.
-    """
-    color = CRIMSON
-    return color.diffuse(val)
-
-
-def _plot_line_with_colored_dots(ax, point1, point2, val):
-    color = _get_color(val)
+def _plot_line_with_colored_dots(ax, point1, point2, val, color=CRIMSON):
+    color = color.diffuse(val)
 
     # Ensure point1 and point2 are numpy arrays of shape (2,)
     if not (isinstance(point1, np.ndarray) and isinstance(point2, np.ndarray)):
         raise ValueError("point1 and point2 must be numpy arrays of shape (2,)")
 
-    # Plot the line between point1 and point2
-    ax.plot([point1[0], point2[0]], [point1[1], point2[1]], "-", color=color)
-
-    # Plot dots at the ends of the line
-    ax.scatter(
-        [point1[0], point2[0]], [point1[1], point2[1]], c=[color, color], s=50
-    )  # s specifies the size of the dot
+    ax.arrow(
+        point1[0],
+        point1[1],
+        point2[0] - point1[0],
+        point2[1] - point1[1],
+        shape="full",
+        color=color,
+        linewidth=1,
+        length_includes_head=True,
+        head_width=0.1,
+    )
 
 
 def plot_gcs_relaxation(
     ax: plt.Axes,
     gcs: GCS,
     vals: Dict[Edge, EdgeVars],
+    true_vals: Optional[Dict[Edge, EdgeVars]] = None,
 ):
     ax.clear()  # Clear previous plots on ax
 
     # Plot each polytope
     for id, polytope in gcs.vertices.items():
         if id == gcs.source:
-            facecolor = "green"
+            facecolor = COBALTGREEN.diffuse(0.5)
+            edgecolor = DARKOLIVEGREEN.diffuse()
             name = str(id) + " (s)"
         elif id == gcs.target:
-            facecolor = "orange"
+            facecolor = DARKORANGE.diffuse(0.5)
+            edgecolor = DARKORANGE4.diffuse()
             name = str(id) + " (t)"
         else:
-            facecolor = "c"
+            facecolor = LIGHTSKYBLUE1.diffuse(0.5)
+            edgecolor = LIGHTSKYBLUE3.diffuse()
             name = str(id)
-        plot_polytope(
-            polytope, ax, name=name, edgecolor="k", facecolor=facecolor, alpha=0.2
-        )
-
-    for e in gcs.edges:
-        val = vals[e]
-        if val.x_u is not None and val.x_v is not None:
-            _plot_line_with_colored_dots(ax, val.x_u, val.x_v, val.y)
+        plot_polytope(polytope, ax, name=name, edgecolor=edgecolor, facecolor=facecolor)
 
     # Draw arrows for edges
     for u, v in gcs.edges:
@@ -178,12 +186,21 @@ def plot_gcs_relaxation(
             centroid_v[0] - centroid_u[0],
             centroid_v[1] - centroid_u[1],
             shape="full",
-            color="black",
+            color=LIGHTSKYBLUE4.diffuse(0.5),
             linewidth=1,
             length_includes_head=True,
             head_width=0.1,
-            alpha=0.5,
         )
+
+    for e in gcs.edges:
+        val = vals[e]
+        if val.x_u is not None and val.x_v is not None:
+            _plot_line_with_colored_dots(ax, val.x_u, val.x_v, val.y)
+
+        if true_vals is not None:
+            val = true_vals[e]
+            if val.x_u is not None and val.x_v is not None:
+                _plot_line_with_colored_dots(ax, val.z_u, val.z_v, val.y, COBALTGREEN)
 
     # Set axis properties and show the plot
     ax.set_xlabel("X")

@@ -28,6 +28,10 @@ class GCS:
         """
         Add an edge with an associated cost function.
         """
+        if (vertex_a_id, vertex_b_id) in self.edges:
+            raise RuntimeError(
+                f"Edge {(vertex_a_id, vertex_b_id)} already in the edge list!"
+            )
         self.edges.append((vertex_a_id, vertex_b_id))
 
     def set_source(self, source_id: VertexId) -> None:
