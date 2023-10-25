@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.geometry.optimization import VPolytope
 
+from admm_gcs.colors import COLORS, CORNSILK4, CRIMSON
+from admm_gcs.convex_relaxation.admm import EdgeVars
 from admm_gcs.non_convex_admm.admm import EdgeVar
-from admm_gcs.non_convex_admm.gcs import Edge, VertexId
+from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId
 from admm_gcs.tools import calc_polytope_centroid
 
 
@@ -111,7 +113,88 @@ def plot_gcs_graph(
         plt.show()
 
 
-def plot_admm_solution(
+def _get_color(val):
+    """
+    Interpolate color between grey and red based on val.
+    val should be between 0 and 1.
+    """
+    color = CRIMSON
+    return color.diffuse(val)
+
+
+def _plot_line_with_colored_dots(ax, point1, point2, val):
+    color = _get_color(val)
+
+    # Ensure point1 and point2 are numpy arrays of shape (2,)
+    if not (isinstance(point1, np.ndarray) and isinstance(point2, np.ndarray)):
+        raise ValueError("point1 and point2 must be numpy arrays of shape (2,)")
+
+    # Plot the line between point1 and point2
+    ax.plot([point1[0], point2[0]], [point1[1], point2[1]], "-", color=color)
+
+    # Plot dots at the ends of the line
+    ax.scatter(
+        [point1[0], point2[0]], [point1[1], point2[1]], c=[color, color], s=50
+    )  # s specifies the size of the dot
+
+
+def plot_gcs_relaxation(
+    ax: plt.Axes,
+    gcs: GCS,
+    vals: Dict[Edge, EdgeVars],
+):
+    ax.clear()  # Clear previous plots on ax
+
+    # Plot each polytope
+    for id, polytope in gcs.vertices.items():
+        if id == gcs.source:
+            facecolor = "green"
+            name = str(id) + " (s)"
+        elif id == gcs.target:
+            facecolor = "orange"
+            name = str(id) + " (t)"
+        else:
+            facecolor = "c"
+            name = str(id)
+        plot_polytope(
+            polytope, ax, name=name, edgecolor="k", facecolor=facecolor, alpha=0.2
+        )
+
+    for e in gcs.edges:
+        val = vals[e]
+        if val.x_u is not None and val.x_v is not None:
+            _plot_line_with_colored_dots(ax, val.x_u, val.x_v, val.y)
+
+    # Draw arrows for edges
+    for u, v in gcs.edges:
+        # Compute the centroids of the two polytopes
+        centroid_u = calc_polytope_centroid(gcs.vertices[u])
+        centroid_v = calc_polytope_centroid(gcs.vertices[v])
+
+        # Draw an arrow from centroid of polytope u to centroid of polytope v
+        ax.arrow(
+            centroid_u[0],
+            centroid_u[1],
+            centroid_v[0] - centroid_u[0],
+            centroid_v[1] - centroid_u[1],
+            shape="full",
+            color="black",
+            linewidth=1,
+            length_includes_head=True,
+            head_width=0.1,
+            alpha=0.5,
+        )
+
+    # Set axis properties and show the plot
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_title("Polytopes Visualization with Edges")
+    ax.axis("equal")
+
+    _set_lims(gcs.vertices.values(), ax)
+
+
+def plot_non_convex_admm_solution(
     ax: plt.Axes,  # Add ax parameter here
     polytopes: Dict[VertexId, VPolytope],
     edges: List[Tuple[VertexId, VertexId]],

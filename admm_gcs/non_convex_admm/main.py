@@ -7,18 +7,19 @@ from pydrake.geometry.optimization import VPolytope
 from admm_gcs.non_convex_admm.admm import AdmmParameters, MultiblockADMMSolver
 from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId, edges_to_path
 from admm_gcs.test_cases import (
+    RandomGcsParams,
     create_test_graph,
     create_test_polytopes,
     generate_random_gcs,
 )
 from admm_gcs.tools import add_noise, calc_polytope_centroid
-from admm_gcs.visualize import plot_admm_solution, plot_gcs_graph
+from admm_gcs.visualize import plot_gcs_graph, plot_non_convex_admm_solution
 
 
 def plot_admm_graph(
     admm: MultiblockADMMSolver,
 ):
-    plot_admm_solution(
+    plot_non_convex_admm_solution(
         admm.gcs.vertices,
         admm.gcs.edges,
         admm.local_vars,
@@ -29,7 +30,8 @@ def plot_admm_graph(
 
 def main():
     # gcs = create_test_graph()
-    gcs = generate_random_gcs(seed=1)
+    params = RandomGcsParams(seed=1)
+    gcs = generate_random_gcs(params)
     plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source, gcs.target, save_to_file=True)
     print("Saved graph to file")
 
@@ -49,7 +51,7 @@ def main():
             ax.clear()  # type: ignore
 
             # Update the plot using the same `ax`
-            plot_admm_solution(
+            plot_non_convex_admm_solution(
                 ax,  # type: ignore
                 admm.gcs.vertices,
                 admm.gcs.edges,

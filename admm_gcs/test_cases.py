@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, NamedTuple
 
 import networkx as nx
 import numpy as np
@@ -162,15 +162,20 @@ def generate_random_edges(N, p):
     return edges
 
 
-def generate_random_gcs(seed: int = 123):
-    random.seed(seed)
+class RandomGcsParams(NamedTuple):
+    num_vertices: int = 10
+    min_polytope_distance: float = 0.8
+    target_dist: float = 8.0
+    seed: int = 123
 
-    # Example usage:
-    N = 10  # Number of vertices
-    min_distance = 0.8
 
-    polytopes = create_random_polytopes(N, min_distance)
-    source = random.randint(1, N - 1)
+def generate_random_gcs(params: RandomGcsParams):
+    random.seed(params.seed)
+
+    polytopes = create_random_polytopes(
+        params.num_vertices, params.min_polytope_distance
+    )
+    source = random.randint(1, params.num_vertices - 1)
 
     def _dist(u_id, v_id) -> float:
         source_centroid = calc_polytope_centroid(polytopes[u_id])
@@ -180,8 +185,8 @@ def generate_random_gcs(seed: int = 123):
 
     edges = []
     min_dist = 4.0
-    for u in range(N):
-        for v in range(N):
+    for u in range(params.num_vertices):
+        for v in range(params.num_vertices):
             if u == v:
                 continue
             if _dist(u, v) < min_dist:
@@ -206,9 +211,15 @@ def generate_random_gcs(seed: int = 123):
 
     target = source
 
-    TRES = 8.0
-    while _dist(source, target) < TRES:
+    MAX_TARGET_ITS = 500
+    it = 0
+    while _dist(source, target) < params.target_dist:
+        if it > MAX_TARGET_ITS:
+            raise RuntimeError(
+                f"Could not find target vertex in {MAX_TARGET_ITS} iterations"
+            )
         target = random.choice(vertices)
+        it += 1
 
     # # Create edges by sampling paths from source
     # edges = []

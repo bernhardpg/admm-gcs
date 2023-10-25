@@ -1,5 +1,6 @@
+import copy
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -7,9 +8,7 @@ from pydrake.math import eq
 from pydrake.solvers import MathematicalProgram, MathematicalProgramResult, MosekSolver
 
 from admm_gcs.non_convex_admm.gcs import GCS, Edge, VertexId
-from admm_gcs.test_cases import create_test_graph
-from admm_gcs.tools import squared_eucl_distance, squared_eucl_norm
-from admm_gcs.visualize import plot_gcs_graph
+from admm_gcs.tools import squared_eucl_norm
 
 T = TypeVar("T", bound=Any)
 
@@ -44,11 +43,31 @@ class EdgeVars(Generic[T]):
         y = result.GetSolution(self.y)
         return EdgeVars(z_u, z_v, y)
 
+    @property
+    def flow_treshold(self) -> float:
+        return 1e-3
+
+    @property
+    def x_u(self) -> Optional[npt.NDArray[T]]:
+        if self.y > self.flow_treshold:
+            return self.z_u / self.y  # type: ignore
+        else:
+            return None
+
+    @property
+    def x_v(self) -> Optional[npt.NDArray[T]]:
+        if self.y > self.flow_treshold:
+            return self.z_v / self.y  # type: ignore
+        else:
+            return None
+
 
 @dataclass
 class AdmmParameters:
     rho: float = 1.0
+    sigma: float = 1.0
     max_iterations: int = 50
+    store_iterations: bool = False
 
 
 class AdmmSolver:
@@ -56,6 +75,9 @@ class AdmmSolver:
         self.iteration = 0
         self.params = params
         self.graph = gcs
+
+        self.rho = params.rho
+        self.sigma = params.sigma
 
         self.dim = 2  # TODO
 
@@ -79,6 +101,11 @@ class AdmmSolver:
             }
             for v in self.graph.vertices
         }
+
+        if self.params.store_iterations:
+            self.local_vars_history = []
+            self.consensus_vars_history = []
+            self.price_vars_history = []
 
     def _update_local_for_vertex(self, vertex: VertexId) -> None:
         prog = MathematicalProgram()
@@ -118,7 +145,12 @@ class AdmmSolver:
             z_e_v_err = squared_eucl_norm(z_ve_v - z_e_v + lam_ve_v)
             y_e_err = (y_ve - y_e + mu_ve) ** 2
 
-            prog.AddQuadraticCost(z_e_u_err + z_e_v_err + y_e_err, is_convex=True)
+            prog.AddQuadraticCost(
+                (self.rho / 2) * z_e_u_err
+                + (self.rho / 2) * z_e_v_err
+                + (self.sigma / 2) * y_e_err,
+                is_convex=True,
+            )
 
         # Flow constraints
         incoming_edges = self.graph.incoming_edges_per_vertex[vertex]
@@ -176,7 +208,7 @@ class AdmmSolver:
 
             z_u = local_vars[e].z_u
             z_v = local_vars[e].z_v
-            prog.AddLorentzConeConstraint(np.concatenate([[s], z_u, z_v]))
+            prog.AddLorentzConeConstraint(np.concatenate([[s], z_u - z_v]))
 
         solver = MosekSolver()
         result = solver.Solve(prog)  # type: ignore
@@ -266,26 +298,11 @@ class AdmmSolver:
         self.iteration += 1
         # TODO(bernhardpg): Update rho here
 
-    def solve(self):
-        """
-        Solve the optimization problem using multi-block ADMM.
-        """
-
+    def solve(self) -> None:
         for it in range(self.params.max_iterations):
+            if self.params.store_iterations:
+                self.local_vars_history.append(copy.deepcopy(self.local_vars))
+                self.consensus_vars_history.append(copy.deepcopy(self.consensus_vars))
+                self.price_vars_history.append(copy.deepcopy(self.price_vars))
+
             self._step()
-
-
-def main() -> None:
-    gcs = create_test_graph()
-
-    plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source, gcs.target, save_to_file=True)
-
-    params = AdmmParameters()
-    solver = AdmmSolver(gcs, params)
-
-    solver.initialize()
-    solver.solve()
-
-
-if __name__ == "__main__":
-    main()
