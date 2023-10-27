@@ -113,6 +113,21 @@ class AdmmSolver:
             for v in self.graph.vertices
         }
 
+        self.primal_residuals = {
+            v: {
+                e: EdgeVars.make_zero(ambient_dim=2)
+                for e in self.graph.edges_per_vertex[v]
+            }
+            for v in self.graph.vertices
+        }
+        self.primal_residuals = {
+            v: {
+                e: EdgeVars.make_zero(ambient_dim=2)
+                for e in self.graph.edges_per_vertex[v]
+            }
+            for v in self.graph.vertices
+        }
+
         if self.params.store_iterations:
             self.local_vars_history = []
             self.consensus_vars_history = []
@@ -197,7 +212,7 @@ class AdmmSolver:
                     eq(outgoing_spatial_flows, incoming_spatial_flows)
                 )
 
-                # # Two-cycle elimination constraints
+                # Two-cycle elimination constraints
                 # for e_out in outgoing_edges:
                 #     for e_in in incoming_edges:
                 #         if e_in[0] == e_out[1]:
@@ -316,6 +331,10 @@ class AdmmSolver:
                 z_e_u = self.consensus_vars[e].z_u
                 z_e_v = self.consensus_vars[e].z_v
                 y_e = self.consensus_vars[e].y
+
+                self.primal_residuals[v][e] = EdgeVars(
+                    z_ve_u - z_e_u, z_ve_v - z_e_v, y_ve - y_e
+                )
 
                 lam_ve_u_next = lam_ve_u + z_ve_u - z_e_u
                 lam_ve_v_next = lam_ve_v + z_ve_v - z_e_v

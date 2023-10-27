@@ -130,11 +130,22 @@ def plot_gcs_graph(
 
 
 def _plot_line_with_colored_dots(ax, point1, point2, val, color=CRIMSON):
-    color = color.diffuse(val)
+    color = color.diffuse(np.clip(val, 0, 1))
 
     # Ensure point1 and point2 are numpy arrays of shape (2,)
     if not (isinstance(point1, np.ndarray) and isinstance(point2, np.ndarray)):
         raise ValueError("point1 and point2 must be numpy arrays of shape (2,)")
+
+    centroid = np.mean([point1, point2], axis=0)
+    PRECISION = 2
+    ax.text(
+        centroid[0],
+        centroid[1],
+        f"{val:.{PRECISION}f}",
+        ha="center",
+        va="bottom",
+        color=color,
+    )
 
     ax.arrow(
         point1[0],

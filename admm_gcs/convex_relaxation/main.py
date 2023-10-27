@@ -30,7 +30,9 @@ def solve_with_drake(custom_gcs: GCS) -> None:
 
     options = opt.GraphOfConvexSetsOptions()
     options.max_rounded_paths = 0
-    options.convex_relaxation = False
+    options.convex_relaxation = True
+    options.max_rounding_trials = 0
+    options.preprocessing = False
 
     result = gcs.SolveShortestPath(
         vertices[custom_gcs.source], vertices[custom_gcs.target], options
@@ -53,15 +55,15 @@ def main() -> None:
     gcs = create_test_graph()
 
     # gcs = generate_random_gcs(RandomGcsParams(num_vertices=15, seed=3, target_dist=8.0))
-    plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source, gcs.target, save_to_file=True)
+    # plot_gcs_graph(gcs.vertices, gcs.edges, gcs.source, gcs.target, save_to_file=True)
     print("Saved gcs graph to file")
 
     true_vars = solve_with_drake(gcs)
 
     params = AdmmParameters(
-        rho=10.0,
-        sigma=10.0,
-        max_iterations=200,
+        rho=0.10,
+        sigma=0.10,
+        max_iterations=300,
         store_iterations=True,
         init_consensus_w_noise=False,
     )
